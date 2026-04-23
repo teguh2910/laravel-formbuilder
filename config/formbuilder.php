@@ -5,10 +5,14 @@ $routePrefix = trim((string) env('FORMBUILDER_ROUTE_PREFIX', 'formbuilder'), '/'
 $apiPrefix = trim((string) env('FORMBUILDER_API_PREFIX', $routePrefix . '/api'), '/');
 
 if ($basePath !== '') {
-    if (!str_starts_with($routePrefix, $basePath . '/')) {
+    // If route_prefix already has a slash, treat it as full custom path and do not auto-prepend base_path.
+    $routePrefixIsFullPath = str_contains($routePrefix, '/');
+    $apiPrefixIsFullPath = str_contains($apiPrefix, '/');
+
+    if (!$routePrefixIsFullPath && !str_starts_with($routePrefix, $basePath . '/')) {
         $routePrefix = trim($basePath . '/' . $routePrefix, '/');
     }
-    if (!str_starts_with($apiPrefix, $basePath . '/')) {
+    if (!$apiPrefixIsFullPath && !str_starts_with($apiPrefix, $basePath . '/')) {
         $apiPrefix = trim($basePath . '/' . $apiPrefix, '/');
     }
 }
