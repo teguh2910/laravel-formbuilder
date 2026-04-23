@@ -435,33 +435,11 @@
             const payload = {
                 id,
                 templateId: mySelectedTemplate.id,
-                templateName: mySelectedTemplate.name,
-                department: mySelectedTemplate.department || null,
                 employeeName: currentUser.name,
                 employeeEmail: currentUser.email,
                 data: { ...myFormData },
                 prerequisiteSubmissionId,
-                approvalSteps: (mySelectedTemplate.approvalFlow || []).map((a, i) => ({
-                    ...(function() {
-                        const approvalType = a.approvalType === "external" ? "external" : "internal";
-                        const approverUsername = approvalType === "internal"
-                            ? (myInternalApproverSelections[a.id] || "").trim()
-                            : ((users || []).find(u => u.name === (a.role || ""))?.username || null);
-                        const approverUser = approverUsername
-                            ? (users || []).find(u => u.username === approverUsername)
-                            : null;
-                        return {
-                            approverUsername: approverUsername || null,
-                            approverName: approverUser?.name || (approvalType === "external" ? (a.role || null) : null),
-                        };
-                    })(),
-                    id: a.id || `APR-${i + 1}`,
-                    role: a.role || a.title || a.name || "spv",
-                    approvalType: a.approvalType === "external" ? "external" : "internal",
-                    order: i,
-                    status: i === 0 ? "in_review" : "pending",
-                })),
-                status: (mySelectedTemplate.approvalFlow || []).length > 0 ? "in_review" : "approved",
+                approverSelections: { ...myInternalApproverSelections },
                 submittedAt: new Date().toISOString(),
             };
 
@@ -641,7 +619,7 @@
 
         // Override showView for non_admin only - delegate to original for all other views
         const originalShowView = showView;
-        showView = function(view) {
+        showView = function(view, options = {}) {
             if (currentUser && currentUser.role === "non_admin") {
                 Object.values(views).forEach(el => {
                     if (el) el.classList.add("hidden");
@@ -675,10 +653,10 @@
                     showMyView("myDashboard");
                 } else {
                     // track and other views - delegate to original
-                    originalShowView(view);
+                    originalShowView(view, options);
                 }
                 return;
             }
             // Not non_admin, use original behavior
-            originalShowView(view);
+            originalShowView(view, options);
         };

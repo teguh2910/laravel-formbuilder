@@ -46,7 +46,7 @@
                     internalApproverSelections = {};
                     renderDynamicFields();
                     document.getElementById("selected-form-title").textContent = selectedTemplate.name;
-                    showView("fillForm");
+                    showView("fillForm", { query: { template: selectedTemplate.id } });
                 });
             });
         }
@@ -268,33 +268,11 @@
             const payload = {
                 id,
                 templateId: selectedTemplate.id,
-                templateName: selectedTemplate.name,
-                department: selectedTemplate.department || null,
                 employeeName: name,
                 employeeEmail: email,
                 data: { ...formData },
                 prerequisiteSubmissionId,
-                approvalSteps: (selectedTemplate.approvalFlow || []).map((a, i) => ({
-                    ...(function() {
-                        const approvalType = a.approvalType === "external" ? "external" : "internal";
-                        const approverUsername = approvalType === "internal"
-                            ? (internalApproverSelections[a.id] || "").trim()
-                            : ((users || []).find(u => u.name === (a.role || ""))?.username || null);
-                        const approverUser = approverUsername
-                            ? (users || []).find(u => u.username === approverUsername)
-                            : null;
-                        return {
-                            approverUsername: approverUsername || null,
-                            approverName: approverUser?.name || (approvalType === "external" ? (a.role || null) : null),
-                        };
-                    })(),
-                    id: a.id || `APR-${i + 1}`,
-                    role: a.role || a.title || a.name || "spv",
-                    approvalType: a.approvalType === "external" ? "external" : "internal",
-                    order: i,
-                    status: i === 0 ? "in_review" : "pending",
-                })),
-                status: (selectedTemplate.approvalFlow || []).length > 0 ? "in_review" : "approved",
+                approverSelections: { ...internalApproverSelections },
                 submittedAt: new Date().toISOString(),
             };
 

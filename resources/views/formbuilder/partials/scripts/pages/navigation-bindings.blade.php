@@ -40,10 +40,15 @@
 
         (async function initFormBuilderApp() {
             try {
-                await loadAppData();
+                const initialView = initialServerView || resolveViewFromPath(window.location.pathname);
                 currentUser = restoreCurrentUserSession();
-                renderTemplateList();
-                const initialView = resolveViewFromPath(window.location.pathname);
+                const needsData = currentUser || !["landing", "login"].includes(initialView);
+                if (needsData) {
+                    await loadAppData();
+                }
+                if (templates.length > 0) {
+                    renderTemplateList();
+                }
                 if ((initialView === "admin" || initialView === "mySubmissions") && !currentUser) {
                     showView("login", { replaceRoute: true });
                     return;
@@ -64,7 +69,29 @@
                     renderAdmin();
                     return;
                 }
-                showView(initialView, { syncRoute: false });
+                showView(initialView, { syncRoute: false, forceLocal: true });
+                if (initialView === "fillForm") {
+                    const params = new URLSearchParams(window.location.search);
+                    const templateId = (params.get("template") || "").trim();
+                    if (!templateId) {
+                        showView("fillList");
+                        return;
+                    }
+
+                    const found = templates.find(t => t.id === templateId);
+                    if (!found) {
+                        showToast("Form template not found", "error");
+                        showView("fillList");
+                        return;
+                    }
+
+                    selectedTemplate = found;
+                    formData = {};
+                    verifiedPrerequisiteSubmissionId = null;
+                    internalApproverSelections = {};
+                    renderDynamicFields();
+                    document.getElementById("selected-form-title").textContent = selectedTemplate.name;
+                }
                 if (currentUser && initialView === "admin") {
                     renderAdmin();
                 }

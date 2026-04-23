@@ -2,31 +2,56 @@
             const username = document.getElementById("login-username").value.trim();
             const password = document.getElementById("login-password").value;
 
-            if (users.length === 0) {
-                try {
-                    await loadAppData();
-                } catch (e) {
-                    showToast(e.message || "Failed to load users", "error");
-                    return;
-                }
+            if (!username || !password) {
+                showToast("Username and password are required", "error");
+                return;
             }
 
-            const user = users.find(u => u.username === username && u.password === password);
-            if (!user) {
+            let authUser = null;
+            try {
+                const res = await fetch(`${routePrefix}/login`, {
+                    method: "POST",
+                    headers: {
+                        "Accept": "application/json",
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": csrfToken,
+                    },
+                    credentials: "same-origin",
+                    body: JSON.stringify({ username, password }),
+                });
+                const raw = await res.text();
+                const result = raw ? JSON.parse(raw) : {};
+                if (!res.ok) {
+                    throw new Error(result?.message || `Request failed (${res.status})`);
+                }
+                authUser = result.user || null;
+            } catch (e) {
+                showToast(e.message || "Invalid credentials", "error");
+                return;
+            }
+
+            if (!authUser) {
                 showToast("Invalid credentials", "error");
                 return;
             }
-            currentUser = user;
-            persistCurrentUserSession(user);
+
+            currentUser = authUser;
+            persistCurrentUserSession(authUser);
+            try {
+                await loadAppData({ includeUsers: true });
+            } catch (e) {
+                showToast(e.message || "Failed to load app data", "error");
+                return;
+            }
 
             // non_admin goes to personal portal
-            if (user.role === "non_admin") {
-                showToast(`Welcome, ${user.name}!`);
+            if (authUser.role === "non_admin") {
+                showToast(`Welcome, ${authUser.name}!`);
                 showView("mySubmissions");
                 return;
             }
 
-            showToast(`Welcome, ${user.name}!`);
+            showToast(`Welcome, ${authUser.name}!`);
             renderAdmin();
             showView("admin");
         }

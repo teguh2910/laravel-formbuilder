@@ -1,12 +1,23 @@
         const viewRouteMap = {
             landing: "/",
-            login: "/formbuilder/login",
-            fillList: "/formbuilder/forms",
-            fillForm: "/formbuilder/forms/fill",
-            track: "/formbuilder/track",
-            admin: "/formbuilder/admin",
-            mySubmissions: "/formbuilder/my-submissions",
+            login: `${routePrefix}/login`,
+            fillList: `${routePrefix}/forms`,
+            fillForm: `${routePrefix}/forms/fill`,
+            track: `${routePrefix}/track`,
+            admin: `${routePrefix}/admin`,
+            mySubmissions: `${routePrefix}/my-submissions`,
         };
+
+        const isNonSpaMode = true;
+
+        function getUrlWithQuery(path, query = {}) {
+            const url = new URL(path, window.location.origin);
+            Object.entries(query || {}).forEach(([key, value]) => {
+                if (value === undefined || value === null || value === "") return;
+                url.searchParams.set(key, String(value));
+            });
+            return url.pathname + url.search;
+        }
 
         function normalizePath(path) {
             const p = String(path || "/").replace(/\/+$/, "");
@@ -15,13 +26,13 @@
 
         function resolveViewFromPath(path = window.location.pathname) {
             const normalized = normalizePath(path);
-            if (normalized === "/" || normalized === "/formbuilder") return "landing";
-            if (normalized === "/formbuilder/login") return "login";
-            if (normalized === "/formbuilder/forms") return "fillList";
-            if (normalized === "/formbuilder/forms/fill") return "fillForm";
-            if (normalized === "/formbuilder/track") return "track";
-            if (normalized === "/formbuilder/admin") return "admin";
-            if (normalized === "/formbuilder/my-submissions") return "mySubmissions";
+            if (normalized === "/" || normalized === normalizePath(routePrefix)) return "landing";
+            if (normalized === normalizePath(viewRouteMap.login)) return "login";
+            if (normalized === normalizePath(viewRouteMap.fillList)) return "fillList";
+            if (normalized === normalizePath(viewRouteMap.fillForm)) return "fillForm";
+            if (normalized === normalizePath(viewRouteMap.track)) return "track";
+            if (normalized === normalizePath(viewRouteMap.admin)) return "admin";
+            if (normalized === normalizePath(viewRouteMap.mySubmissions)) return "mySubmissions";
             return "landing";
         }
 
@@ -29,22 +40,49 @@
             const targetPath = viewRouteMap[viewName];
             if (!targetPath) return;
             const currentPath = normalizePath(window.location.pathname);
-            const nextPath = normalizePath(targetPath);
+            const nextRoute = getUrlWithQuery(targetPath, options.query || {});
+            const nextPath = normalizePath(new URL(nextRoute, window.location.origin).pathname);
+
+            if (isNonSpaMode) {
+                if (currentPath === nextPath && !options.query) return;
+                if (options.replace) {
+                    window.location.replace(nextRoute);
+                } else {
+                    window.location.assign(nextRoute);
+                }
+                return;
+            }
+
             if (currentPath === nextPath) return;
             const method = options.replace ? "replaceState" : "pushState";
-            window.history[method]({}, "", targetPath);
+            window.history[method]({}, "", nextRoute);
         }
 
         function showView(name, options = {}) {
-            Object.values(views).forEach(v => {
-                if (v) v.classList.add("hidden");
-            });
             if (!views[name]) {
                 throw new Error(`Unknown view: ${name}`);
             }
+
+            if (isNonSpaMode && !options.forceLocal) {
+                const currentView = resolveViewFromPath(window.location.pathname);
+                if (currentView !== name || options.query) {
+                    syncRouteWithView(name, {
+                        replace: !!options.replaceRoute,
+                        query: options.query || null,
+                    });
+                    return;
+                }
+            }
+
+            Object.values(views).forEach(v => {
+                if (v) v.classList.add("hidden");
+            });
             views[name].classList.remove("hidden");
             if (options.syncRoute !== false) {
-                syncRouteWithView(name, { replace: !!options.replaceRoute });
+                syncRouteWithView(name, {
+                    replace: !!options.replaceRoute,
+                    query: options.query || null,
+                });
             }
         }
 
@@ -87,8 +125,10 @@
             return data;
         }
 
-        async function loadAppData() {
-            const data = await apiRequest("/bootstrap");
+        async function loadAppData(options = {}) {
+            const shouldIncludeUsers = options.includeUsers ?? !!currentUser;
+            const qs = shouldIncludeUsers ? "?includeUsers=1" : "";
+            const data = await apiRequest(`/bootstrap${qs}`);
             users = data.users || [];
             depts = data.depts || [];
             templates = data.templates || [];
@@ -100,6 +140,10 @@
                 if (!user || !user.username) return;
                 localStorage.setItem(authStorageKey, JSON.stringify({
                     username: user.username,
+                    role: user.role || null,
+                    name: user.name || null,
+                    email: user.email || null,
+                    department: user.department || null,
                 }));
             } catch (_) {}
         }
@@ -116,12 +160,13 @@
                 if (!raw) return null;
                 const parsed = JSON.parse(raw);
                 if (!parsed || !parsed.username) return null;
-                const found = users.find(u => u.username === parsed.username);
-                if (!found) {
-                    clearCurrentUserSession();
-                    return null;
-                }
-                return found;
+                return {
+                    username: parsed.username,
+                    role: parsed.role || "",
+                    name: parsed.name || parsed.username,
+                    email: parsed.email || "",
+                    department: parsed.department || null,
+                };
             } catch (_) {
                 clearCurrentUserSession();
                 return null;
@@ -401,6 +446,7 @@
         }
 
         window.addEventListener("popstate", () => {
+            if (isNonSpaMode) return;
             const view = resolveViewFromPath(window.location.pathname);
             try {
                 showView(view, { syncRoute: false });

@@ -428,33 +428,11 @@
                         const payload = {
                             id,
                             templateId: adSelectedTemplate.id,
-                            templateName: adSelectedTemplate.name,
-                            department: adSelectedTemplate.department || null,
                             employeeName: currentUser.name,
                             employeeEmail: currentUser.email,
                             data: { ...adFormData },
                             prerequisiteSubmissionId,
-                            approvalSteps: (adSelectedTemplate.approvalFlow || []).map((a, i) => ({
-                                ...(function() {
-                                    const approvalType = a.approvalType === "external" ? "external" : "internal";
-                                    const approverUsername = approvalType === "internal"
-                                        ? (adInternalApproverSelections[a.id] || "").trim()
-                                        : ((users || []).find(u => u.name === (a.role || ""))?.username || null);
-                                    const approverUser = approverUsername
-                                        ? (users || []).find(u => u.username === approverUsername)
-                                        : null;
-                                    return {
-                                        approverUsername: approverUsername || null,
-                                        approverName: approverUser?.name || (approvalType === "external" ? (a.role || null) : null),
-                                    };
-                                })(),
-                                id: a.id || `APR-${i + 1}`,
-                                role: a.role || a.title || a.name || "spv",
-                                approvalType: a.approvalType === "external" ? "external" : "internal",
-                                order: i,
-                                status: i === 0 ? "in_review" : "pending",
-                            })),
-                            status: (adSelectedTemplate.approvalFlow || []).length > 0 ? "in_review" : "approved",
+                            approverSelections: { ...adInternalApproverSelections },
                             submittedAt: new Date().toISOString(),
                         };
 

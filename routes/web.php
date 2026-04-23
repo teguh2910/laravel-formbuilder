@@ -2,20 +2,22 @@
 
 use Illuminate\Support\Facades\Route;
 use SatuForm\FormBuilder\Http\Controllers\FormBuilderApiController;
+use SatuForm\FormBuilder\Http\Controllers\FormBuilderPageController;
 
 Route::middleware('web')->group(function () {
     $prefix = trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/');
     $apiPrefix = trim((string) config('formbuilder.api_prefix', $prefix.'/api'), '/');
 
-    Route::view('/', 'formbuilder::formbuilder');
-    Route::view('/'.$prefix, 'formbuilder::formbuilder');
-    Route::view('/'.$prefix.'/login', 'formbuilder::formbuilder');
-    Route::view('/'.$prefix.'/forms', 'formbuilder::formbuilder');
-    Route::view('/'.$prefix.'/forms/fill', 'formbuilder::formbuilder');
-    Route::view('/'.$prefix.'/track', 'formbuilder::formbuilder');
-    Route::view('/'.$prefix.'/admin', 'formbuilder::formbuilder');
-    Route::view('/'.$prefix.'/my-submissions', 'formbuilder::formbuilder');
-    Route::view('/dashboard', 'formbuilder::formbuilder')->name('dashboard');
+    Route::get('/', [FormBuilderPageController::class, 'landing']);
+    Route::get('/'.$prefix, [FormBuilderPageController::class, 'landing']);
+    Route::get('/'.$prefix.'/login', [FormBuilderPageController::class, 'login']);
+    Route::get('/'.$prefix.'/forms', [FormBuilderPageController::class, 'forms']);
+    Route::get('/'.$prefix.'/forms/fill', [FormBuilderPageController::class, 'formsFill']);
+    Route::get('/'.$prefix.'/track', [FormBuilderPageController::class, 'track']);
+    Route::get('/'.$prefix.'/admin', [FormBuilderPageController::class, 'admin']);
+    Route::get('/'.$prefix.'/my-submissions', [FormBuilderPageController::class, 'mySubmissions']);
+    Route::post('/'.$prefix.'/login', [FormBuilderPageController::class, 'authenticate']);
+    Route::get('/dashboard', [FormBuilderPageController::class, 'landing'])->name('dashboard');
 
     Route::prefix($apiPrefix)->group(function () {
         Route::get('/bootstrap', [FormBuilderApiController::class, 'bootstrap']);

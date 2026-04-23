@@ -11,7 +11,8 @@
                 const res = await apiRequest(`/submissions/${encodeURIComponent(id.toUpperCase())}`);
                 found = res.submission || null;
             } catch (e) {
-                found = submissions.find(s => s.id.toLowerCase() === id);
+                resultEl.innerHTML = `<div style="padding:12px;background:#FEE2E2;color:var(--danger);border-radius:8px;">${escapeHtml(e.message || "Submission not found.")}</div>`;
+                return;
             }
 
             if (!found) {

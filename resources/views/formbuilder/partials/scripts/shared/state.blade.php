@@ -1,4 +1,6 @@
         const apiBase = "/ais-v4/formbuilder/api";
+        const routePrefix = "/{{ trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') }}";
+        const initialServerView = @json($formbuilderInitialView ?? null);
         const csrfToken = "{{ csrf_token() }}";
         const authStorageKey = "formbuilder_auth_user";
 

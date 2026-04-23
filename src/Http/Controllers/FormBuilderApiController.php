@@ -11,13 +11,42 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class FormBuilderApiController extends Controller
 {
+    public function login(Request $request)
+    {
+        $payload = $request->validate([
+            'username' => ['required', 'string', 'max:100'],
+            'password' => ['required', 'string', 'max:255'],
+        ]);
+
+        $user = FormUser::query()
+            ->where('username', trim((string) $payload['username']))
+            ->where('password', (string) $payload['password'])
+            ->first();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'Invalid credentials',
+            ], 401);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'user' => $this->mapUser($user),
+        ]);
+    }
+
     public function bootstrap()
     {
+        $includeUsers = request()->boolean('includeUsers', false);
+
         return response()->json([
-            'users' => FormUser::query()->orderBy('id')->get()->map(fn (FormUser $user) => $this->mapUser($user)),
+            'users' => $includeUsers
+                ? FormUser::query()->orderBy('id')->get()->map(fn (FormUser $user) => $this->mapUser($user))
+                : [],
             'depts' => FormDepartment::query()->orderBy('name')->get()->map(function (FormDepartment $dept) {
                 return [
                     'id' => $dept->id,
@@ -187,14 +216,13 @@ class FormBuilderApiController extends Controller
         $payload = $request->validate([
             'id' => ['required', 'string', 'max:100'],
             'templateId' => ['required', 'string'],
-            'templateName' => ['required', 'string', 'max:255'],
-            'department' => ['nullable', 'string'],
             'employeeName' => ['required', 'string', 'max:255'],
             'employeeEmail' => ['required', 'email', 'max:255'],
             'data' => ['nullable', 'array'],
             'prerequisiteSubmissionId' => ['nullable', 'string', 'max:100'],
+            'approverSelections' => ['nullable', 'array'],
+            'approverSelections.*' => ['nullable', 'string', 'max:100'],
             'approvalSteps' => ['nullable', 'array'],
-            'status' => ['required', 'string', 'max:50'],
             'submittedAt' => ['nullable', 'date'],
         ]);
 
@@ -204,6 +232,8 @@ class FormBuilderApiController extends Controller
                 'message' => 'Template not found.',
             ], 422);
         }
+
+        $template->loadMissing('fields');
 
         if (!empty($template->prerequisite_form_id)) {
             $prerequisiteSubmissionId = strtoupper(trim((string) ($payload['prerequisiteSubmissionId'] ?? '')));
@@ -234,6 +264,27 @@ class FormBuilderApiController extends Controller
             }
         }
 
+        $data = is_array($payload['data'] ?? null) ? $payload['data'] : [];
+        foreach ($template->fields as $field) {
+            if (!(bool) $field->required) {
+                continue;
+            }
+
+            $value = $data[$field->id] ?? null;
+            if ($this->isEmptyFieldValue($value)) {
+                return response()->json([
+                    'message' => 'Field required: ' . ($field->label ?: $field->id),
+                ], 422);
+            }
+        }
+
+        $approvalSteps = $this->buildApprovalSteps(
+            $template,
+            $payload['approverSelections'] ?? [],
+            $payload['approvalSteps'] ?? []
+        );
+        $status = count($approvalSteps) > 0 ? 'in_review' : 'approved';
+
         $submission = FormSubmission::query()->create([
             'id' => $payload['id'],
             'template_id' => $template->id,
@@ -241,9 +292,9 @@ class FormBuilderApiController extends Controller
             'department_id' => $template->department_id,
             'employee_name' => $payload['employeeName'],
             'employee_email' => $payload['employeeEmail'],
-            'data' => $payload['data'] ?? [],
-            'approval_steps' => $payload['approvalSteps'] ?? [],
-            'status' => $payload['status'],
+            'data' => $data,
+            'approval_steps' => $approvalSteps,
+            'status' => $status,
             'submitted_at' => $payload['submittedAt'] ?? now(),
         ]);
 
@@ -381,12 +432,106 @@ class FormBuilderApiController extends Controller
         return [
             'id' => $user->id,
             'username' => $user->username,
-            'password' => $user->password,
             'role' => $user->role,
             'name' => $user->name,
             'email' => $user->email,
             'department' => $user->department_id,
         ];
+    }
+
+    private function isEmptyFieldValue(mixed $value): bool
+    {
+        if ($value === null) {
+            return true;
+        }
+
+        if (is_string($value)) {
+            return trim($value) === '';
+        }
+
+        if (is_array($value)) {
+            return count($value) === 0;
+        }
+
+        return false;
+    }
+
+    private function buildApprovalSteps(FormTemplate $template, array $approverSelections, array $fallbackApprovalSteps = []): array
+    {
+        $approvalFlow = is_array($template->approval_flow) ? $template->approval_flow : [];
+        if (count($approvalFlow) === 0) {
+            return [];
+        }
+
+        $fallbackById = [];
+        foreach ($fallbackApprovalSteps as $step) {
+            if (!is_array($step)) {
+                continue;
+            }
+            $stepId = trim((string) ($step['id'] ?? ''));
+            if ($stepId !== '') {
+                $fallbackById[$stepId] = $step;
+            }
+        }
+
+        $approverUsers = FormUser::query()
+            ->get()
+            ->filter(fn (FormUser $user) => strtolower(trim((string) $user->role)) !== 'non_admin')
+            ->keyBy(fn (FormUser $user) => strtolower(trim((string) $user->username)));
+
+        $steps = [];
+        foreach ($approvalFlow as $index => $flowStep) {
+            if (!is_array($flowStep)) {
+                continue;
+            }
+
+            $stepId = trim((string) ($flowStep['id'] ?? ('APR-' . ($index + 1))));
+            $role = trim((string) ($flowStep['role'] ?? $flowStep['title'] ?? $flowStep['name'] ?? 'spv'));
+            $approvalType = ($flowStep['approvalType'] ?? 'internal') === 'external' ? 'external' : 'internal';
+
+            $approverUsername = null;
+            $approverName = null;
+
+            if ($approvalType === 'internal') {
+                $selectedApprover = trim((string) (
+                    $approverSelections[$stepId]
+                    ?? $approverSelections[(string) $index]
+                    ?? ($fallbackById[$stepId]['approverUsername'] ?? '')
+                    ?? ($fallbackApprovalSteps[$index]['approverUsername'] ?? '')
+                ));
+                $selectedApprover = strtolower($selectedApprover);
+
+                if ($selectedApprover === '') {
+                    throw ValidationException::withMessages([
+                        'approverSelections' => ['Please select approver for ' . $role . '.'],
+                    ]);
+                }
+
+                $approver = $approverUsers->get($selectedApprover);
+                if (!$approver) {
+                    throw ValidationException::withMessages([
+                        'approverSelections' => ['Approver "' . $selectedApprover . '" is not valid.'],
+                    ]);
+                }
+
+                $approverUsername = $approver->username;
+                $approverName = $approver->name;
+            } else {
+                $approverName = $role !== '' ? $role : null;
+            }
+
+            $steps[] = [
+                'id' => $stepId,
+                'role' => $role,
+                'approvalType' => $approvalType,
+                'order' => $index,
+                'status' => $index === 0 ? 'in_review' : 'pending',
+                'approverUsername' => $approverUsername,
+                'approverName' => $approverName,
+            ];
+        }
+
+        return $steps;
     }
 
     private function mapSubmission(FormSubmission $submission): array
