@@ -5,7 +5,7 @@
                 <div class="brand-logo">S</div>
                 <span class="brand-text">SATU FORM</span>
             </div>
-            <a id="btn-open-login" href="{{ 'satuform/login' }}" class="btn btn-outline" style="border-color: rgba(255,255,255,.3); color: #fff; text-decoration:none;">Admin Login</a>
+            <a id="btn-open-login" href="{{ '/ais-v4/satuform/login' }}" class="btn btn-outline" style="border-color: rgba(255,255,255,.3); color: #fff; text-decoration:none;">Admin Login</a>
         </nav>
         <div class="landing-main">
             <div class="landing-inner">
