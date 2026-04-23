@@ -297,7 +297,7 @@ class FormBuilderPageController extends Controller
                 'id' => ['required', 'string', 'max:100'],
                 'name' => ['required', 'string', 'max:255'],
                 'description' => ['nullable', 'string'],
-                'department' => ['nullable', 'string', Rule::exists('Form_departments', 'id')],
+                'department' => ['nullable', 'string', Rule::exists(FormDepartment::class, 'id')],
                 'published' => ['nullable', 'boolean'],
                 'prerequisiteFormId' => ['nullable', 'string'],
                 'approvalFlow' => ['nullable', 'array'],
@@ -460,18 +460,18 @@ class FormBuilderPageController extends Controller
 
         try {
             $payload = validator($payload, [
-                'id' => ['nullable', 'integer', Rule::exists('FormUser', 'id')],
+                'id' => ['nullable', 'integer', Rule::exists(FormUser::class, 'id')],
                 'username' => [
                     'required',
                     'string',
                     'max:100',
-                    Rule::unique('FormUser', 'username')->ignore($payload['id'] ?? null),
+                    Rule::unique(FormUser::class, 'username')->ignore($payload['id'] ?? null),
                 ],
                 'password' => ['nullable', 'string', 'max:255'],
                 'role' => ['required', 'string', 'max:100'],
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['nullable', 'email', 'max:255'],
-                'department' => ['nullable', 'string', Rule::exists('Form_departments', 'id')],
+                'department' => ['nullable', 'string', Rule::exists(FormDepartment::class, 'id')],
             ])->validate();
 
             $isCreate = empty($payload['id']);
