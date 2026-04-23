@@ -5,7 +5,7 @@
                 <h2 class="login-title">SATU FORM</h2>
                 <p class="login-sub">Admin Login</p>
             </div>
-            <form id="form-login" method="POST" action="{{ ($formbuilderRouteBase ?? ('/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/'))) . '/login' }}" data-mode="server">
+            <form id="form-login" method="POST" action="{{ '/ais-v4/satuform/login' }}" data-mode="server">
                 @csrf
                 <div class="mb-18">
                     <label class="label">Username</label>
@@ -23,7 +23,7 @@
                 <button id="btn-login" class="btn btn-primary" style="width:100%" type="submit">Sign In</button>
             </form>
             <div style="text-align:center;margin-top:16px;">
-                <a id="btn-back-home" href="{{ $formbuilderRouteBase ?? ('/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/')) }}" class="btn btn-ghost" style="font-size:13px; text-decoration:none;"><- Back to Home</a>
+                <a id="btn-back-home" href="{{ '/ais-v4/satuform' }}" class="btn btn-ghost" style="font-size:13px; text-decoration:none;"><- Back to Home</a>
             </div>
             <div class="demo-box">
                 <strong>Demo:</strong> superadmin / admin123 - hr.admin / hr123 - staff1 / staff123

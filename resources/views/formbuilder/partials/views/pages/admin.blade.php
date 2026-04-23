@@ -1,4 +1,4 @@
-    @php($fbRouteBase = $formbuilderRouteBase ?? ('/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/')))
+    @php($fbRouteBase = '/ais-v4/satuform')
     <div id="view-admin" class="admin-wrap hidden">
         <aside class="admin-sidebar">
             <div style="padding:18px;border-bottom:1px solid rgba(255,255,255,.12);">

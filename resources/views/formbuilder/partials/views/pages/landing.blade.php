@@ -1,4 +1,4 @@
-@php($fbRouteBase = $formbuilderRouteBase ?? ('/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/')))
+@php($fbRouteBase = '/ais-v4/satuform')
 <div id="view-landing" class="landing-wrap">
         <nav class="landing-nav">
             <div class="brand">
