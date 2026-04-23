@@ -27,4 +27,9 @@
         <main class="admin-main">
             <div id="admin-content"></div>
         </main>
+        <form id="admin-submit-form" method="POST" action="{{ '/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') . '/forms/submit-auth' }}" class="hidden">
+            @csrf
+            <input type="hidden" name="redirect_to" value="admin">
+            <input type="hidden" id="admin-submit-payload" name="payload" value="">
+        </form>
     </div>

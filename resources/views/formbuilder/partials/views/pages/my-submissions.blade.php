@@ -66,6 +66,11 @@
                     <button id="btn-my-submit-form" class="btn btn-primary">Submit Form</button>
                 </div>
             </div>
+            <form id="my-submit-form" method="POST" action="{{ '/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') . '/forms/submit-auth' }}" class="hidden">
+                @csrf
+                <input type="hidden" name="redirect_to" value="my-submissions">
+                <input type="hidden" id="my-submit-payload" name="payload" value="">
+            </form>
 
             <div id="view-my-track" class="card hidden" style="margin-top:16px;">
                 <h3 style="margin:0 0 12px;color:var(--primary)">Tracking</h3>

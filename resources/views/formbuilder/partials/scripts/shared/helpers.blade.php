@@ -146,30 +146,10 @@
             return true;
         }
 
-        function persistCurrentUserSession(user) {
-            try {
-                if (!user || !user.username) return;
-                localStorage.setItem(authStorageKey, JSON.stringify({
-                    username: user.username,
-                    role: user.role || null,
-                    name: user.name || null,
-                    email: user.email || null,
-                    department: user.department || null,
-                }));
-            } catch (_) {}
-        }
-
-        function clearCurrentUserSession() {
-            try {
-                localStorage.removeItem(authStorageKey);
-            } catch (_) {}
-        }
-
         function restoreCurrentUserSession() {
             if (serverCurrentUser && serverCurrentUser.username) {
                 return serverCurrentUser;
             }
-            clearCurrentUserSession();
             return null;
         }
 

@@ -443,23 +443,15 @@
                 submittedAt: new Date().toISOString(),
             };
 
-            try {
-                await apiRequest("/submissions", {
-                    method: "POST",
-                    body: payload,
-                });
-                await loadAppData();
-            } catch (e) {
-                showToast(e.message || "Failed to submit form", "error");
+            const submitFormEl = document.getElementById("my-submit-form");
+            const submitPayloadEl = document.getElementById("my-submit-payload");
+            if (!submitFormEl || !submitPayloadEl) {
+                showToast("Submit form is not available", "error");
                 return;
             }
 
-            mySelectedTemplate = null;
-            myFormData = {};
-            myVerifiedPrerequisiteSubmissionId = null;
-            myInternalApproverSelections = {};
-            showToast(`Form submitted. Tracking ID: ${id}`);
-            showMyView("myDashboard");
+            submitPayloadEl.value = JSON.stringify(payload);
+            submitFormEl.submit();
         }
 
         function showMyView(view) {
@@ -514,9 +506,18 @@
         }
 
         document.getElementById("btn-my-subs-logout").addEventListener("click", () => {
-            currentUser = null;
-            clearCurrentUserSession();
-            showView("landing");
+            const form = document.createElement("form");
+            form.method = "POST";
+            form.action = `${routePrefix}/logout`;
+
+            const tokenInput = document.createElement("input");
+            tokenInput.type = "hidden";
+            tokenInput.name = "_token";
+            tokenInput.value = csrfToken;
+            form.appendChild(tokenInput);
+
+            document.body.appendChild(form);
+            form.submit();
         });
 
         document.getElementById("btn-my-form-list-back").addEventListener("click", () => {

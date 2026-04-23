@@ -38,7 +38,6 @@
             form.appendChild(tokenInput);
 
             document.body.appendChild(form);
-            clearCurrentUserSession();
             form.submit();
         });
         document.querySelectorAll("[data-admin-page]").forEach(btn => {
@@ -52,12 +51,7 @@
             try {
                 const initialView = initialServerView || resolveViewFromPath(window.location.pathname);
                 currentUser = restoreCurrentUserSession();
-                const hasServerData = hydrateAppDataFromServer();
-                const hasLocalData = users.length > 0 || depts.length > 0 || templates.length > 0 || submissions.length > 0;
-                const needsData = !["landing", "login"].includes(initialView);
-                if (needsData && !hasServerData && !hasLocalData) {
-                    await loadAppData();
-                }
+                hydrateAppDataFromServer();
                 if (templates.length > 0) {
                     renderTemplateList();
                 }

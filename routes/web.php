@@ -14,6 +14,7 @@ Route::middleware('web')->group(function () {
     Route::get('/'.$prefix.'/forms', [FormBuilderPageController::class, 'forms']);
     Route::get('/'.$prefix.'/forms/fill', [FormBuilderPageController::class, 'formsFill']);
     Route::post('/'.$prefix.'/forms/submit', [FormBuilderPageController::class, 'submitPublicForm']);
+    Route::post('/'.$prefix.'/forms/submit-auth', [FormBuilderPageController::class, 'submitAuthenticatedForm']);
     Route::get('/'.$prefix.'/track', [FormBuilderPageController::class, 'track']);
     Route::get('/'.$prefix.'/admin', [FormBuilderPageController::class, 'admin']);
     Route::get('/'.$prefix.'/my-submissions', [FormBuilderPageController::class, 'mySubmissions']);

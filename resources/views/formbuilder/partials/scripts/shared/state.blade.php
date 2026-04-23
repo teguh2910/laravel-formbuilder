@@ -5,7 +5,6 @@
         const serverInitialData = @json($formbuilderInitialData ?? null);
         const serverFlash = @json($formbuilderFlash ?? null);
         const csrfToken = "{{ csrf_token() }}";
-        const authStorageKey = "formbuilder_auth_user";
 
         let users = [];
         let depts = [];

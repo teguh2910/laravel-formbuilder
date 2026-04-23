@@ -436,21 +436,15 @@
                             submittedAt: new Date().toISOString(),
                         };
 
-                        try {
-                            await apiRequest("/submissions", { method: "POST", body: payload });
-                            await loadAppData();
-                        } catch (e) {
-                            showToast(e.message || "Failed to submit form", "error");
+                        const submitFormEl = document.getElementById("admin-submit-form");
+                        const submitPayloadEl = document.getElementById("admin-submit-payload");
+                        if (!submitFormEl || !submitPayloadEl) {
+                            showToast("Submit form is not available", "error");
                             return;
                         }
 
-                        adSelectedTemplate = null;
-                        adFormData = {};
-                        adVerifiedPrerequisiteSubmissionId = null;
-                        adInternalApproverSelections = {};
-                        showToast(`Form submitted. Tracking ID: ${id}`);
-                        showList();
-                        renderFormList();
+                        submitPayloadEl.value = JSON.stringify(payload);
+                        submitFormEl.submit();
                     };
 
                     filterDepartmentEl.addEventListener("change", () => {

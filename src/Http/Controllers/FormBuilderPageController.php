@@ -107,6 +107,52 @@ class FormBuilderPageController extends Controller
         }
     }
 
+    public function submitAuthenticatedForm(Request $request): RedirectResponse
+    {
+        $currentUser = $this->sessionUser();
+        if (!$currentUser) {
+            return redirect($this->loginPath())
+                ->with('formbuilder_flash', [
+                    'type' => 'error',
+                    'message' => 'Please login first.',
+                ]);
+        }
+
+        $rawPayload = $request->input('payload');
+        $decoded = json_decode((string) $rawPayload, true);
+        $payload = is_array($decoded) ? $decoded : [];
+
+        $payload['employeeName'] = $currentUser['name'] ?? '';
+        $payload['employeeEmail'] = $currentUser['email'] ?? '';
+
+        try {
+            $submission = $this->storeSubmissionFromPayload($payload);
+            $target = $this->redirectPathForAuthenticatedSubmit($request, $currentUser);
+
+            return redirect($target)
+                ->with('formbuilder_flash', [
+                    'type' => 'success',
+                    'message' => 'Form submitted. Tracking ID: ' . $submission->id,
+                ]);
+        } catch (Throwable $e) {
+            $errorMessage = $e->getMessage() ?: 'Failed to submit form.';
+            if ($e instanceof ValidationException) {
+                $firstError = collect($e->errors())->flatten()->first();
+                if (is_string($firstError) && $firstError !== '') {
+                    $errorMessage = $firstError;
+                }
+            }
+
+            $target = $this->redirectPathForAuthenticatedSubmit($request, $currentUser);
+
+            return redirect($target)
+                ->with('formbuilder_flash', [
+                    'type' => 'error',
+                    'message' => $errorMessage,
+                ]);
+        }
+    }
+
     public function admin()
     {
         $currentUser = $this->sessionUser();
@@ -117,7 +163,7 @@ class FormBuilderPageController extends Controller
             return redirect($this->prefixedPath('/my-submissions'));
         }
 
-        return $this->render('admin');
+        return $this->render('admin', $this->buildAuthenticatedData());
     }
 
     public function mySubmissions()
@@ -127,7 +173,7 @@ class FormBuilderPageController extends Controller
             return redirect($this->loginPath());
         }
 
-        return $this->render('mySubmissions');
+        return $this->render('mySubmissions', $this->buildAuthenticatedData());
     }
 
     public function authenticate(Request $request)
@@ -221,6 +267,19 @@ class FormBuilderPageController extends Controller
         return $this->prefixedPath('admin');
     }
 
+    private function redirectPathForAuthenticatedSubmit(Request $request, array $user): string
+    {
+        $target = trim((string) $request->input('redirect_to', ''));
+        if ($target === 'admin') {
+            return $this->prefixedPath('admin');
+        }
+        if ($target === 'my-submissions') {
+            return $this->prefixedPath('my-submissions');
+        }
+
+        return $this->homePathFor($user);
+    }
+
     private function buildPublicData(): array
     {
         return [
@@ -239,6 +298,51 @@ class FormBuilderPageController extends Controller
                 ->map(fn (FormTemplate $template) => $this->mapTemplate($template))
                 ->values()
                 ->all(),
+        ];
+    }
+
+    private function buildAuthenticatedData(): array
+    {
+        return [
+            'users' => FormUser::query()
+                ->orderBy('id')
+                ->get()
+                ->map(fn (FormUser $user) => $this->mapUser($user))
+                ->values()
+                ->all(),
+            'depts' => FormDepartment::query()->orderBy('name')->get()->map(function (FormDepartment $dept) {
+                return [
+                    'id' => $dept->id,
+                    'name' => $dept->name,
+                    'code' => $dept->code,
+                ];
+            })->values()->all(),
+            'templates' => FormTemplate::query()
+                ->with('fields')
+                ->orderBy('created_at')
+                ->get()
+                ->map(fn (FormTemplate $template) => $this->mapTemplate($template))
+                ->values()
+                ->all(),
+            'submissions' => FormSubmission::query()
+                ->orderByDesc('submitted_at')
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(fn (FormSubmission $submission) => $this->mapSubmission($submission))
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function mapUser(FormUser $user): array
+    {
+        return [
+            'id' => $user->id,
+            'username' => $user->username,
+            'role' => $user->role,
+            'name' => $user->name,
+            'email' => $user->email,
+            'department' => $user->department_id,
         ];
     }
 

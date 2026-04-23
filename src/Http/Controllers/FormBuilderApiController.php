@@ -15,32 +15,15 @@ use Illuminate\Validation\ValidationException;
 
 class FormBuilderApiController extends Controller
 {
-    public function login(Request $request)
+    public function bootstrap()
     {
-        $payload = $request->validate([
-            'username' => ['required', 'string', 'max:100'],
-            'password' => ['required', 'string', 'max:255'],
-        ]);
-
-        $user = FormUser::query()
-            ->where('username', trim((string) $payload['username']))
-            ->where('password', (string) $payload['password'])
-            ->first();
-
-        if (!$user) {
+        $sessionUser = session('formbuilder_user');
+        if (!is_array($sessionUser) || empty($sessionUser['username'])) {
             return response()->json([
-                'message' => 'Invalid credentials',
+                'message' => 'Unauthorized.',
             ], 401);
         }
 
-        return response()->json([
-            'ok' => true,
-            'user' => $this->mapUser($user),
-        ]);
-    }
-
-    public function bootstrap()
-    {
         $includeUsers = request()->boolean('includeUsers', false);
 
         return response()->json([
