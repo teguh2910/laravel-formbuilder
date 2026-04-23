@@ -56,7 +56,7 @@ return new class extends Migration
             $table->foreign('prerequisite_form_id')
                 ->references('id')
                 ->on('FORM.form_templates')
-                ->nullOnDelete();
+                ->restrictOnDelete();
         });
 
         Schema::create('FORM.form_fields', function (Blueprint $table) {
