@@ -53,31 +53,18 @@
                     btn.addEventListener("click", () => openTemplateEditor(btn.dataset.id));
                 });
                 content.querySelectorAll(".btn-toggle-template").forEach(btn => {
-                    btn.addEventListener("click", async () => {
-                        try {
-                            await apiRequest(`/templates/${btn.dataset.id}/toggle-publish`, {
-                                method: "POST",
-                            });
-                            await loadAppData();
-                            showToast("Form status updated");
-                            renderAdmin();
-                        } catch (e) {
-                            showToast(e.message || "Failed to update publish status", "error");
-                        }
+                    btn.addEventListener("click", () => {
+                        submitControllerForm(`${routePrefix}/admin/templates/${encodeURIComponent(btn.dataset.id)}/toggle-publish`, {
+                            redirect_to: window.location.pathname + window.location.search,
+                        });
                     });
                 });
                 content.querySelectorAll(".btn-delete-template").forEach(btn => {
-                    btn.addEventListener("click", async () => {
-                        try {
-                            await apiRequest(`/templates/${btn.dataset.id}`, {
-                                method: "DELETE",
-                            });
-                            await loadAppData();
-                            showToast("Form deleted");
-                            renderAdmin();
-                        } catch (e) {
-                            showToast(e.message || "Failed to delete form", "error");
-                        }
+                    btn.addEventListener("click", () => {
+                        if (!confirm("Delete this form template?")) return;
+                        submitControllerForm(`${routePrefix}/admin/templates/${encodeURIComponent(btn.dataset.id)}/delete`, {
+                            redirect_to: window.location.pathname + window.location.search,
+                        });
                     });
                 });
                 return;

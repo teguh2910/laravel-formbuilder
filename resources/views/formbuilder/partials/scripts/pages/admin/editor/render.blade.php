@@ -1,7 +1,6 @@
             if (adminPage === "formEditor") {
                 if (!editorDraft) {
-                    adminPage = "forms";
-                    renderAdmin();
+                    goAdminPage("forms");
                     return;
                 }
 
@@ -50,5 +49,4 @@
 @include('formbuilder::formbuilder.partials.scripts.pages.admin.editor.tabs.settings')
 @include('formbuilder::formbuilder.partials.scripts.pages.admin.editor.tabs.preview')
                 `;
-
 

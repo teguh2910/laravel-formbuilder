@@ -92,47 +92,31 @@
             setTimeout(() => toastEl.className = "toast hidden", 2500);
         }
 
-        async function apiRequest(path, options = {}) {
-            const method = options.method || "GET";
-            const headers = {
-                "Accept": "application/json",
-                ...options.headers,
-            };
+        function submitControllerForm(path, fields = {}, options = {}) {
+            const form = document.createElement("form");
+            form.method = "POST";
+            form.action = path;
 
-            const fetchOptions = {
-                method,
-                headers,
-                credentials: "same-origin",
-            };
+            const tokenInput = document.createElement("input");
+            tokenInput.type = "hidden";
+            tokenInput.name = "_token";
+            tokenInput.value = csrfToken;
+            form.appendChild(tokenInput);
 
-            if (options.body !== undefined) {
-                headers["Content-Type"] = "application/json";
-                headers["X-CSRF-TOKEN"] = csrfToken;
-                fetchOptions.body = JSON.stringify(options.body);
-            } else if (method !== "GET") {
-                headers["X-CSRF-TOKEN"] = csrfToken;
+            Object.entries(fields || {}).forEach(([key, value]) => {
+                if (value === undefined || value === null) return;
+                const input = document.createElement("input");
+                input.type = "hidden";
+                input.name = key;
+                input.value = typeof value === "string" ? value : JSON.stringify(value);
+                form.appendChild(input);
+            });
+
+            document.body.appendChild(form);
+            if (options.removeAfterSubmit !== false) {
+                form.style.display = "none";
             }
-
-            const res = await fetch(`${apiBase}${path}`, fetchOptions);
-            const raw = await res.text();
-            const data = raw ? JSON.parse(raw) : {};
-
-            if (!res.ok) {
-                const msg = data?.message || `Request failed (${res.status})`;
-                throw new Error(msg);
-            }
-
-            return data;
-        }
-
-        async function loadAppData(options = {}) {
-            const shouldIncludeUsers = options.includeUsers ?? !!currentUser;
-            const qs = shouldIncludeUsers ? "?includeUsers=1" : "";
-            const data = await apiRequest(`/bootstrap${qs}`);
-            users = data.users || [];
-            depts = data.depts || [];
-            templates = data.templates || [];
-            submissions = data.submissions || [];
+            form.submit();
         }
 
         function hydrateAppDataFromServer() {
@@ -362,13 +346,8 @@
                 return { ok: false, message: "Please input prerequisite submission ID." };
             }
 
-            let submission = null;
-            try {
-                const res = await apiRequest(`/submissions/${encodeURIComponent(submissionId)}`);
-                submission = res.submission || null;
-            } catch (_) {
-                submission = null;
-            }
+            const list = Array.isArray(submissions) ? submissions : [];
+            const submission = list.find(item => String(item?.id || "").trim().toUpperCase() === submissionId) || null;
 
             if (!submission) {
                 return { ok: false, message: "Prerequisite submission ID not found." };

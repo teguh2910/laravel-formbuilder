@@ -25,13 +25,11 @@
 
                 document.getElementById("btn-editor-back").addEventListener("click", () => {
                     editorDraft = null;
-                    adminPage = "forms";
-                    renderAdmin();
+                    goAdminPage("forms");
                 });
                 document.getElementById("btn-editor-cancel").addEventListener("click", () => {
                     editorDraft = null;
-                    adminPage = "forms";
-                    renderAdmin();
+                    goAdminPage("forms");
                 });
                 document.getElementById("btn-editor-save").addEventListener("click", () => {
                     syncEditorMetaFields();

@@ -1,4 +1,3 @@
-        const apiBase = "/formbuilder/api";
         const routePrefix = "/{{ trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') }}";
         const initialServerView = @json($formbuilderInitialView ?? null);
         const serverCurrentUser = @json($formbuilderCurrentUser ?? null);
@@ -39,6 +38,8 @@
         let selectedTemplate = null;
         let formData = {};
         let currentUser = serverCurrentUser || null;
-        let adminPage = "dashboard";
+        let adminPage = (serverInitialData && typeof serverInitialData === "object" && serverInitialData.adminPage)
+            ? serverInitialData.adminPage
+            : "dashboard";
         let editorDraft = null;
         let editorTab = "fields";

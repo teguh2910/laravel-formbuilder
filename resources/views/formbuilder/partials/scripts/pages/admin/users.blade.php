@@ -159,22 +159,17 @@
                 });
 
                 content.querySelectorAll(".btn-user-delete").forEach(btn => {
-                    btn.addEventListener("click", async () => {
+                    btn.addEventListener("click", () => {
                         const user = users.find(u => String(u.id) === String(btn.dataset.id));
                         if (!user) return;
                         if (!confirm(`Delete user ${user.username}?`)) return;
-                        try {
-                            await apiRequest(`/users/${user.id}`, { method: "DELETE" });
-                            await loadAppData();
-                            renderAdmin();
-                            showToast("User deleted");
-                        } catch (e) {
-                            showToast(e.message || "Failed to delete user", "error");
-                        }
+                        submitControllerForm(`${routePrefix}/admin/users/${encodeURIComponent(user.id)}/delete`, {
+                            redirect_to: `${routePrefix}/admin?page=users`,
+                        });
                     });
                 });
 
-                document.getElementById("btn-user-save").addEventListener("click", async () => {
+                document.getElementById("btn-user-save").addEventListener("click", () => {
                     const payload = {
                         id: userIdEl.value ? Number(userIdEl.value) : null,
                         name: userNameEl.value.trim(),
@@ -202,18 +197,10 @@
                         return;
                     }
 
-                    try {
-                        await apiRequest("/users", {
-                            method: "POST",
-                            body: payload,
-                        });
-                        await loadAppData();
-                        closeUserModal();
-                        renderAdmin();
-                        showToast("User saved");
-                    } catch (e) {
-                        showToast(e.message || "Failed to save user", "error");
-                    }
+                    submitControllerForm(`${routePrefix}/admin/users/save`, {
+                        payload: JSON.stringify(payload),
+                        redirect_to: `${routePrefix}/admin?page=users`,
+                    });
                 });
 
                 return;

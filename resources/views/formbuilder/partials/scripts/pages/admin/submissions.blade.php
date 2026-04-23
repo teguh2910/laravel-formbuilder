@@ -109,24 +109,12 @@
                     </div>
                 `;
 
-                const reviewSubmission = async (submissionId, action) => {
-                    try {
-                        await apiRequest(`/submissions/${encodeURIComponent(submissionId)}/review`, {
-                            method: "POST",
-                            body: {
-                                action,
-                                reviewerRole: currentUser.role,
-                                reviewerUsername: currentUser.username,
-                                reviewerName: currentUser.name,
-                                comments: "",
-                            },
-                        });
-                        await loadAppData();
-                        renderAdmin();
-                        showToast(`Submission ${action}`);
-                    } catch (e) {
-                        showToast(e.message || "Failed to review submission", "error");
-                    }
+                const reviewSubmission = (submissionId, action) => {
+                    submitControllerForm(`${routePrefix}/admin/submissions/${encodeURIComponent(submissionId)}/review`, {
+                        action,
+                        comments: "",
+                        redirect_to: `${routePrefix}/admin?page=submissions`,
+                    });
                 };
 
                 content.querySelectorAll(".btn-sub-approve").forEach(btn => {
@@ -279,8 +267,7 @@
                 if (btnAdminMyNewForm) {
                     btnAdminMyNewForm.addEventListener("click", () => {
                         if (currentUser && currentUser.role === "admin_department") {
-                            adminPage = "submit-form";
-                            renderAdmin();
+                            goAdminPage("submit-form");
                             return;
                         }
                         showView("mySubmissions");

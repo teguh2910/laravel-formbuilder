@@ -9,28 +9,34 @@
             return { allowedTemplates, allowedSubs };
         }
 
-        function openTemplateEditor(templateId = null) {
-            if (templateId) {
-                const found = templates.find(t => t.id === templateId);
-                if (!found) return;
-                editorDraft = JSON.parse(JSON.stringify(found));
-            } else {
-                editorDraft = {
-                    id: genTplId(),
-                    name: "",
-                    description: "",
-                    department: currentUser.role === "superadmin" ? "" : currentUser.department,
-                    published: false,
-                    approvalFlow: [],
-                    fields: [],
-                };
+        function goAdminPage(page, options = {}) {
+            const url = new URL(`${routePrefix}/admin`, window.location.origin);
+            url.searchParams.set("page", page);
+            if (options.templateId) {
+                url.searchParams.set("template", options.templateId);
             }
-            editorTab = "fields";
-            adminPage = "formEditor";
-            renderAdmin();
+            if (options.newEditor) {
+                url.searchParams.set("new", "1");
+            }
+            if (options.tab) {
+                url.searchParams.set("tab", options.tab);
+            }
+            if (options.replace) {
+                window.location.replace(url.pathname + url.search);
+                return;
+            }
+            window.location.assign(url.pathname + url.search);
         }
 
-        async function saveTemplateEditor() {
+        function openTemplateEditor(templateId = null) {
+            if (templateId) {
+                goAdminPage("formEditor", { templateId, tab: "fields" });
+                return;
+            }
+            goAdminPage("formEditor", { newEditor: true, tab: "fields" });
+        }
+
+        function saveTemplateEditor() {
             if (!editorDraft.name.trim()) {
                 showToast("Form name is required", "error");
                 return;
@@ -40,21 +46,10 @@
                 return;
             }
 
-            try {
-                await apiRequest("/templates", {
-                    method: "POST",
-                    body: editorDraft,
-                });
-                await loadAppData();
-            } catch (e) {
-                showToast(e.message || "Failed to save form", "error");
-                return;
-            }
-
-            adminPage = "forms";
-            editorDraft = null;
-            showToast("Form saved");
-            renderAdmin();
+            submitControllerForm(`${routePrefix}/admin/templates/save`, {
+                payload: JSON.stringify(editorDraft),
+                redirect_to: `${routePrefix}/admin?page=forms`,
+            });
         }
 
         function renderAdmin() {
@@ -515,8 +510,7 @@
                 const btnOpenSubmitForm = document.getElementById("btn-admin-open-submit-form");
                 if (btnOpenSubmitForm) {
                     btnOpenSubmitForm.addEventListener("click", () => {
-                        adminPage = "forms";
-                        renderAdmin();
+                        goAdminPage("forms");
                     });
                 }
                 return;

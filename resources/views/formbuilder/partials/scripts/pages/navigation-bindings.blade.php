@@ -41,6 +41,7 @@
             form.submit();
         });
         document.querySelectorAll("[data-admin-page]").forEach(btn => {
+            if (btn.tagName === "A" && btn.getAttribute("href")) return;
             btn.addEventListener("click", () => {
                 adminPage = btn.dataset.adminPage;
                 renderAdmin();
@@ -111,6 +112,14 @@
                     }
                 }
                 if (currentUser && initialView === "admin") {
+                    if (serverInitialData && typeof serverInitialData === "object") {
+                        if (serverInitialData.adminEditorDraft) {
+                            editorDraft = JSON.parse(JSON.stringify(serverInitialData.adminEditorDraft));
+                        }
+                        if (serverInitialData.adminEditorTab) {
+                            editorTab = serverInitialData.adminEditorTab;
+                        }
+                    }
                     renderAdmin();
                 }
                 if (currentUser && initialView === "mySubmissions" && currentUser.role === "non_admin") {

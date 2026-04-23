@@ -4,6 +4,8 @@ namespace SatuForm\FormBuilder\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Illuminate\Routing\Controller;
@@ -153,17 +155,57 @@ class FormBuilderPageController extends Controller
         }
     }
 
-    public function admin()
+    public function admin(Request $request)
     {
         $currentUser = $this->sessionUser();
         if (!$currentUser) {
             return redirect($this->loginPath());
         }
-        if (($currentUser['role'] ?? '') === 'non_admin') {
+        $role = strtolower(trim((string) ($currentUser['role'] ?? '')));
+        if ($role === 'non_admin') {
             return redirect($this->prefixedPath('/my-submissions'));
         }
 
-        return $this->render('admin', $this->buildAuthenticatedData());
+        $page = $this->normalizeAdminPage((string) $request->query('page', 'dashboard'));
+        $isSuperadmin = $role === 'superadmin';
+        $isAdminDepartment = $role === 'admin_department';
+        $adminDepartmentAllowed = ['submit-form', 'my-submissions', 'forms', 'submissions', 'formEditor'];
+
+        if ($isAdminDepartment && !in_array($page, $adminDepartmentAllowed, true)) {
+            return redirect($this->prefixedPath('admin') . '?page=submit-form');
+        }
+
+        if (!$isSuperadmin && in_array($page, ['departments', 'users'], true)) {
+            return redirect($this->prefixedPath('admin') . '?page=dashboard');
+        }
+
+        $data = $this->buildAuthenticatedData();
+        $data['adminPage'] = $page;
+        $data['adminEditorTab'] = $this->normalizeAdminEditorTab((string) $request->query('tab', 'fields'));
+        $data['adminEditorDraft'] = null;
+
+        if ($page === 'formEditor') {
+            $editTemplateId = trim((string) $request->query('template', ''));
+            $isNewEditor = $request->boolean('new', false);
+
+            if ($editTemplateId !== '') {
+                $template = FormTemplate::query()->with('fields')->find($editTemplateId);
+                if (!$template) {
+                    return redirect($this->prefixedPath('admin') . '?page=forms')
+                        ->with('formbuilder_flash', [
+                            'type' => 'error',
+                            'message' => 'Form template not found.',
+                        ]);
+                }
+                $data['adminEditorDraft'] = $this->mapTemplate($template);
+            } elseif ($isNewEditor) {
+                $data['adminEditorDraft'] = $this->newEditorDraft($currentUser);
+            } else {
+                return redirect($this->prefixedPath('admin') . '?page=forms');
+            }
+        }
+
+        return $this->render('admin', $data);
     }
 
     public function mySubmissions()
@@ -232,6 +274,384 @@ class FormBuilderPageController extends Controller
         return redirect($this->prefixedPath(''));
     }
 
+    public function saveTemplate(Request $request): RedirectResponse
+    {
+        $currentUser = $this->sessionUser();
+        if (!$currentUser) {
+            return redirect($this->loginPath());
+        }
+
+        $role = strtolower(trim((string) ($currentUser['role'] ?? '')));
+        if ($role === 'non_admin') {
+            return redirect($this->prefixedPath('my-submissions'));
+        }
+
+        $rawPayload = $request->input('payload');
+        $decoded = json_decode((string) $rawPayload, true);
+        $payload = is_array($decoded) ? $decoded : [];
+
+        $target = $this->resolveAdminRedirectPath($request, $this->prefixedPath('admin') . '?page=forms');
+
+        try {
+            $payload = validator($payload, [
+                'id' => ['required', 'string', 'max:100'],
+                'name' => ['required', 'string', 'max:255'],
+                'description' => ['nullable', 'string'],
+                'department' => ['nullable', 'string', Rule::exists('FORM.form_departments', 'id')],
+                'published' => ['nullable', 'boolean'],
+                'prerequisiteFormId' => ['nullable', 'string'],
+                'approvalFlow' => ['nullable', 'array'],
+                'approvalFlow.*.id' => ['nullable', 'string', 'max:100'],
+                'approvalFlow.*.role' => ['nullable', 'string', 'max:100'],
+                'approvalFlow.*.approvalType' => ['nullable', Rule::in(['internal', 'external'])],
+                'approvalFlow.*.internalLevel' => ['nullable', 'integer', 'min:1', 'max:8'],
+                'fields' => ['nullable', 'array'],
+                'fields.*.id' => ['required', 'string', 'max:100'],
+                'fields.*.type' => ['required', 'string', 'max:50'],
+                'fields.*.label' => ['nullable', 'string', 'max:255'],
+                'fields.*.required' => ['nullable', 'boolean'],
+                'fields.*.options' => ['nullable', 'array'],
+                'fields.*.formula' => ['nullable', 'string'],
+                'fields.*.tableColumns' => ['nullable', 'array'],
+                'fields.*.tableRows' => ['nullable', 'integer', 'min:1', 'max:200'],
+            ])->validate();
+
+            $existing = FormTemplate::query()->find($payload['id']);
+            if ($role === 'admin_department') {
+                if ($existing && (string) ($existing->department_id ?? '') !== (string) ($currentUser['department'] ?? '')) {
+                    throw ValidationException::withMessages([
+                        'template' => ['You are not allowed to edit this form template.'],
+                    ]);
+                }
+                $payload['department'] = $currentUser['department'] ?? null;
+            }
+
+            DB::transaction(function () use ($payload) {
+                $template = FormTemplate::query()->firstOrNew(['id' => $payload['id']]);
+                $template->name = $payload['name'];
+                $template->description = $payload['description'] ?? null;
+                $template->department_id = $payload['department'] ?? null;
+                $template->published = (bool) ($payload['published'] ?? false);
+                $template->prerequisite_form_id = $payload['prerequisiteFormId'] ?? null;
+                $template->approval_flow = $payload['approvalFlow'] ?? [];
+                $template->save();
+
+                FormField::query()->where('template_id', $template->id)->delete();
+
+                $fields = $payload['fields'] ?? [];
+                foreach ($fields as $index => $field) {
+                    FormField::query()->create([
+                        'id' => $field['id'],
+                        'template_id' => $template->id,
+                        'type' => $field['type'],
+                        'label' => $field['label'] ?? null,
+                        'required' => (bool) ($field['required'] ?? false),
+                        'options' => $field['options'] ?? null,
+                        'formula' => $field['formula'] ?? null,
+                        'table_columns' => $field['tableColumns'] ?? null,
+                        'table_rows' => $field['tableRows'] ?? null,
+                        'sort_order' => $index,
+                    ]);
+                }
+            });
+
+            return redirect($target)->with('formbuilder_flash', [
+                'type' => 'success',
+                'message' => 'Form template saved.',
+            ]);
+        } catch (Throwable $e) {
+            return redirect($target)->with('formbuilder_flash', [
+                'type' => 'error',
+                'message' => $this->exceptionMessage($e, 'Failed to save template.'),
+            ]);
+        }
+    }
+
+    public function toggleTemplatePublish(Request $request, string $id): RedirectResponse
+    {
+        $currentUser = $this->sessionUser();
+        if (!$currentUser) {
+            return redirect($this->loginPath());
+        }
+
+        $role = strtolower(trim((string) ($currentUser['role'] ?? '')));
+        if ($role === 'non_admin') {
+            return redirect($this->prefixedPath('my-submissions'));
+        }
+
+        $target = $this->resolveAdminRedirectPath($request, $this->prefixedPath('admin') . '?page=forms');
+
+        try {
+            $template = FormTemplate::query()->findOrFail($id);
+            if ($role === 'admin_department' && (string) ($template->department_id ?? '') !== (string) ($currentUser['department'] ?? '')) {
+                throw ValidationException::withMessages([
+                    'template' => ['You are not allowed to update this form template.'],
+                ]);
+            }
+
+            $template->published = !$template->published;
+            $template->save();
+
+            return redirect($target)->with('formbuilder_flash', [
+                'type' => 'success',
+                'message' => 'Form publish status updated.',
+            ]);
+        } catch (Throwable $e) {
+            return redirect($target)->with('formbuilder_flash', [
+                'type' => 'error',
+                'message' => $this->exceptionMessage($e, 'Failed to update publish status.'),
+            ]);
+        }
+    }
+
+    public function deleteTemplate(Request $request, string $id): RedirectResponse
+    {
+        $currentUser = $this->sessionUser();
+        if (!$currentUser) {
+            return redirect($this->loginPath());
+        }
+
+        $role = strtolower(trim((string) ($currentUser['role'] ?? '')));
+        if ($role === 'non_admin') {
+            return redirect($this->prefixedPath('my-submissions'));
+        }
+
+        $target = $this->resolveAdminRedirectPath($request, $this->prefixedPath('admin') . '?page=forms');
+
+        try {
+            $template = FormTemplate::query()->findOrFail($id);
+            if ($role === 'admin_department' && (string) ($template->department_id ?? '') !== (string) ($currentUser['department'] ?? '')) {
+                throw ValidationException::withMessages([
+                    'template' => ['You are not allowed to delete this form template.'],
+                ]);
+            }
+
+            $template->delete();
+
+            return redirect($target)->with('formbuilder_flash', [
+                'type' => 'success',
+                'message' => 'Form template deleted.',
+            ]);
+        } catch (Throwable $e) {
+            return redirect($target)->with('formbuilder_flash', [
+                'type' => 'error',
+                'message' => $this->exceptionMessage($e, 'Failed to delete template.'),
+            ]);
+        }
+    }
+
+    public function saveUser(Request $request): RedirectResponse
+    {
+        $currentUser = $this->sessionUser();
+        if (!$currentUser) {
+            return redirect($this->loginPath());
+        }
+
+        $role = strtolower(trim((string) ($currentUser['role'] ?? '')));
+        if ($role !== 'superadmin') {
+            return redirect($this->prefixedPath('admin') . '?page=dashboard');
+        }
+
+        $rawPayload = $request->input('payload');
+        $decoded = json_decode((string) $rawPayload, true);
+        $payload = is_array($decoded) ? $decoded : [];
+
+        $target = $this->resolveAdminRedirectPath($request, $this->prefixedPath('admin') . '?page=users');
+
+        try {
+            $payload = validator($payload, [
+                'id' => ['nullable', 'integer', Rule::exists('FORM.form_users', 'id')],
+                'username' => [
+                    'required',
+                    'string',
+                    'max:100',
+                    Rule::unique('FORM.form_users', 'username')->ignore($payload['id'] ?? null),
+                ],
+                'password' => ['nullable', 'string', 'max:255'],
+                'role' => ['required', 'string', 'max:100'],
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['nullable', 'email', 'max:255'],
+                'department' => ['nullable', 'string', Rule::exists('FORM.form_departments', 'id')],
+            ])->validate();
+
+            $isCreate = empty($payload['id']);
+            $userRole = strtolower(trim((string) ($payload['role'] ?? '')));
+
+            if ($isCreate && empty($payload['password'])) {
+                throw ValidationException::withMessages([
+                    'password' => ['Password is required for new user.'],
+                ]);
+            }
+            if ($userRole !== 'superadmin' && empty($payload['department'])) {
+                throw ValidationException::withMessages([
+                    'department' => ['Department is required for non-superadmin user.'],
+                ]);
+            }
+
+            $user = $isCreate
+                ? new FormUser()
+                : FormUser::query()->findOrFail((int) $payload['id']);
+
+            $user->username = $payload['username'];
+            $user->role = $userRole;
+            $user->name = $payload['name'];
+            $user->email = $payload['email'] ?? null;
+            $user->department_id = $userRole === 'superadmin'
+                ? null
+                : ($payload['department'] ?? null);
+            if (!empty($payload['password'])) {
+                $user->password = $payload['password'];
+            }
+            $user->save();
+
+            return redirect($target)->with('formbuilder_flash', [
+                'type' => 'success',
+                'message' => 'User saved.',
+            ]);
+        } catch (Throwable $e) {
+            return redirect($target)->with('formbuilder_flash', [
+                'type' => 'error',
+                'message' => $this->exceptionMessage($e, 'Failed to save user.'),
+            ]);
+        }
+    }
+
+    public function deleteUser(Request $request, int $id): RedirectResponse
+    {
+        $currentUser = $this->sessionUser();
+        if (!$currentUser) {
+            return redirect($this->loginPath());
+        }
+
+        $role = strtolower(trim((string) ($currentUser['role'] ?? '')));
+        if ($role !== 'superadmin') {
+            return redirect($this->prefixedPath('admin') . '?page=dashboard');
+        }
+
+        $target = $this->resolveAdminRedirectPath($request, $this->prefixedPath('admin') . '?page=users');
+
+        try {
+            $user = FormUser::query()->findOrFail($id);
+            if (strtolower(trim((string) $user->role)) === 'superadmin') {
+                throw ValidationException::withMessages([
+                    'user' => ['Superadmin user cannot be deleted.'],
+                ]);
+            }
+
+            $user->delete();
+
+            return redirect($target)->with('formbuilder_flash', [
+                'type' => 'success',
+                'message' => 'User deleted.',
+            ]);
+        } catch (Throwable $e) {
+            return redirect($target)->with('formbuilder_flash', [
+                'type' => 'error',
+                'message' => $this->exceptionMessage($e, 'Failed to delete user.'),
+            ]);
+        }
+    }
+
+    public function reviewSubmission(Request $request, string $id): RedirectResponse
+    {
+        $currentUser = $this->sessionUser();
+        if (!$currentUser) {
+            return redirect($this->loginPath());
+        }
+
+        $role = strtolower(trim((string) ($currentUser['role'] ?? '')));
+        if ($role === 'non_admin') {
+            return redirect($this->prefixedPath('my-submissions'));
+        }
+
+        $target = $this->resolveAdminRedirectPath($request, $this->prefixedPath('admin') . '?page=submissions');
+
+        try {
+            $payload = $request->validate([
+                'action' => ['required', Rule::in(['approved', 'rejected'])],
+                'comments' => ['nullable', 'string', 'max:2000'],
+            ]);
+
+            $submission = FormSubmission::query()->findOrFail($id);
+            $steps = $submission->approval_steps ?? [];
+
+            if (!is_array($steps) || count($steps) === 0) {
+                throw ValidationException::withMessages([
+                    'submission' => ['This submission has no approval steps.'],
+                ]);
+            }
+
+            $activeIndex = null;
+            foreach ($steps as $index => $step) {
+                if (($step['status'] ?? null) === 'in_review') {
+                    $activeIndex = $index;
+                    break;
+                }
+            }
+
+            if ($activeIndex === null) {
+                throw ValidationException::withMessages([
+                    'submission' => ['No active approval step found.'],
+                ]);
+            }
+
+            $reviewerUsername = strtolower(trim((string) ($currentUser['username'] ?? '')));
+            $requiredRole = strtolower(trim((string) ($steps[$activeIndex]['role'] ?? '')));
+            $requiredApproverUsername = strtolower(trim((string) ($steps[$activeIndex]['approverUsername'] ?? '')));
+
+            if ($role !== 'superadmin') {
+                if ($requiredApproverUsername !== '' && $reviewerUsername !== $requiredApproverUsername) {
+                    throw ValidationException::withMessages([
+                        'submission' => ['You are not allowed to review this step.'],
+                    ]);
+                }
+                if ($requiredApproverUsername === '' && $requiredRole !== '' && $role !== $requiredRole) {
+                    throw ValidationException::withMessages([
+                        'submission' => ['You are not allowed to review this step.'],
+                    ]);
+                }
+            }
+
+            $now = now()->toISOString();
+            $steps[$activeIndex]['status'] = $payload['action'];
+            $steps[$activeIndex]['reviewedAt'] = $now;
+            $steps[$activeIndex]['reviewedBy'] = $currentUser['name'] ?? null;
+            $steps[$activeIndex]['comments'] = $payload['comments'] ?? '';
+
+            if ($payload['action'] === 'approved') {
+                $nextPendingIndex = null;
+                for ($i = $activeIndex + 1; $i < count($steps); $i++) {
+                    if (($steps[$i]['status'] ?? null) === 'pending') {
+                        $nextPendingIndex = $i;
+                        break;
+                    }
+                }
+
+                if ($nextPendingIndex !== null) {
+                    $steps[$nextPendingIndex]['status'] = 'in_review';
+                    $submission->status = 'in_review';
+                } else {
+                    $submission->status = 'approved';
+                }
+            } else {
+                $submission->status = 'rejected';
+            }
+
+            $submission->approval_steps = $steps;
+            $submission->save();
+
+            return redirect($target)->with('formbuilder_flash', [
+                'type' => 'success',
+                'message' => 'Submission ' . $payload['action'] . '.',
+            ]);
+        } catch (Throwable $e) {
+            return redirect($target)->with('formbuilder_flash', [
+                'type' => 'error',
+                'message' => $this->exceptionMessage($e, 'Failed to review submission.'),
+            ]);
+        }
+    }
+
     private function sessionUser(): ?array
     {
         $user = session('formbuilder_user');
@@ -280,6 +700,34 @@ class FormBuilderPageController extends Controller
         return $this->homePathFor($user);
     }
 
+    private function resolveAdminRedirectPath(Request $request, string $fallback): string
+    {
+        $target = trim((string) $request->input('redirect_to', ''));
+        if ($target === '') {
+            return $fallback;
+        }
+
+        $adminPrefix = $this->prefixedPath('admin');
+        if (!str_starts_with($target, $adminPrefix)) {
+            return $fallback;
+        }
+
+        return $target;
+    }
+
+    private function exceptionMessage(Throwable $e, string $default): string
+    {
+        if ($e instanceof ValidationException) {
+            $firstError = collect($e->errors())->flatten()->first();
+            if (is_string($firstError) && $firstError !== '') {
+                return $firstError;
+            }
+        }
+
+        $message = trim((string) $e->getMessage());
+        return $message !== '' ? $message : $default;
+    }
+
     private function buildPublicData(): array
     {
         return [
@@ -296,6 +744,14 @@ class FormBuilderPageController extends Controller
                 ->orderBy('created_at')
                 ->get()
                 ->map(fn (FormTemplate $template) => $this->mapTemplate($template))
+                ->values()
+                ->all(),
+            'submissions' => FormSubmission::query()
+                ->select(['id', 'template_id', 'status'])
+                ->orderByDesc('submitted_at')
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(fn (FormSubmission $submission) => $this->mapSubmissionForPrerequisite($submission))
                 ->values()
                 ->all(),
         ];
@@ -385,6 +841,61 @@ class FormBuilderPageController extends Controller
             'status' => $submission->status,
             'submittedAt' => optional($submission->submitted_at)->toISOString() ?? optional($submission->created_at)->toISOString(),
         ];
+    }
+
+    private function mapSubmissionForPrerequisite(FormSubmission $submission): array
+    {
+        return [
+            'id' => $submission->id,
+            'templateId' => $submission->template_id,
+            'status' => $submission->status,
+        ];
+    }
+
+    private function normalizeAdminPage(string $page): string
+    {
+        $allowed = [
+            'dashboard',
+            'submit-form',
+            'my-submissions',
+            'forms',
+            'submissions',
+            'tracking',
+            'departments',
+            'users',
+            'formEditor',
+        ];
+
+        return in_array($page, $allowed, true) ? $page : 'dashboard';
+    }
+
+    private function normalizeAdminEditorTab(string $tab): string
+    {
+        $allowed = ['fields', 'approval', 'settings', 'preview'];
+        return in_array($tab, $allowed, true) ? $tab : 'fields';
+    }
+
+    private function newEditorDraft(array $currentUser): array
+    {
+        return [
+            'id' => $this->generateTplId(),
+            'name' => '',
+            'description' => '',
+            'department' => (($currentUser['role'] ?? '') === 'superadmin')
+                ? ''
+                : ($currentUser['department'] ?? ''),
+            'published' => false,
+            'approvalFlow' => [],
+            'fields' => [],
+        ];
+    }
+
+    private function generateTplId(): string
+    {
+        $time = strtoupper(base_convert((string) time(), 10, 36));
+        $rand = strtoupper(substr(bin2hex(random_bytes(3)), 0, 3));
+
+        return 'TPL-' . $time . '-' . $rand;
     }
 
     private function storeSubmissionFromPayload(array $payload): FormSubmission

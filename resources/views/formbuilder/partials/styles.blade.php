@@ -66,7 +66,7 @@
         .my-sidebar { width: 250px; background: var(--primary); color: var(--white); display: flex; flex-direction: column; }
         .my-main { flex: 1; overflow: auto; }
         .my-main .my-container { max-width: none; margin: 24px; padding: 0; }
-        .admin-nav-btn { width: 100%; text-align: left; border: none; border-radius: 8px; padding: 10px 12px; cursor: pointer; background: transparent; color: rgba(255,255,255,.75); font-weight: 600; }
+        .admin-nav-btn { width: 100%; text-align: left; border: none; border-radius: 8px; padding: 10px 12px; cursor: pointer; background: transparent; color: rgba(255,255,255,.75); font-weight: 600; text-decoration: none; display: block; }
         .admin-nav-btn.active { background: rgba(255,255,255,.15); color: #fff; }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 14px; }
         .stat-card { background: var(--white); border-radius: 10px; padding: 14px; box-shadow: 0 1px 3px rgba(0,26,114,.08); }
