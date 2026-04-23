@@ -1,0 +1,25 @@
+{
+  "name": "satuform/laravel-formbuilder",
+  "description": "Satu Form Builder package",
+  "type": "library",
+  "keywords": ["laravel", "formbuilder", "satuform"],
+  "require": {
+    "php": "^8.1",
+    "illuminate/support": "^10.0"
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "SatuForm\\FormBuilder\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "SatuForm\\FormBuilder\\FormBuilderServiceProvider"
+      ]
+    }
+  }
+}

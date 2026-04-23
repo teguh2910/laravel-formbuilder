@@ -1,0 +1,5 @@
+@include('formbuilder::partials.scripts.pages.admin.editor.render')
+@include('formbuilder::partials.scripts.pages.admin.editor.bindings.common')
+@include('formbuilder::partials.scripts.pages.admin.editor.bindings.fields')
+@include('formbuilder::partials.scripts.pages.admin.editor.bindings.approval')
+@include('formbuilder::partials.scripts.pages.admin.editor.bindings.footer')
