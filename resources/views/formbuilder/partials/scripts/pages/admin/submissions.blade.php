@@ -7,8 +7,10 @@
                     const currentUsername = String(currentUser.username || "").toLowerCase();
                     const stepRole = String(step.role || "").toLowerCase();
                     const stepApproverUsername = String(step.approverUsername || "").toLowerCase();
+                    const stepApprovalType = String(step.approvalType || "internal").toLowerCase();
                     if (userRole === "superadmin") return true;
                     if (stepApproverUsername !== "") return currentUsername === stepApproverUsername;
+                    if (stepApprovalType === "external" && stepRole !== "") return currentUsername === stepRole;
                     return stepRole !== "" && userRole === stepRole;
                 };
                 const renderSubmissionDetail = (submission) => {

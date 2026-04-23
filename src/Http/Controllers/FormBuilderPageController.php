@@ -598,6 +598,7 @@ class FormBuilderPageController extends Controller
             $reviewerUsername = strtolower(trim((string) ($currentUser['username'] ?? '')));
             $requiredRole = strtolower(trim((string) ($steps[$activeIndex]['role'] ?? '')));
             $requiredApproverUsername = strtolower(trim((string) ($steps[$activeIndex]['approverUsername'] ?? '')));
+            $requiredApprovalType = strtolower(trim((string) ($steps[$activeIndex]['approvalType'] ?? 'internal')));
 
             if ($role !== 'superadmin') {
                 if ($requiredApproverUsername !== '' && $reviewerUsername !== $requiredApproverUsername) {
@@ -605,11 +606,19 @@ class FormBuilderPageController extends Controller
                         'submission' => ['You are not allowed to review this step.'],
                     ]);
                 }
-                if ($requiredApproverUsername === '' && $requiredRole !== '' && $role !== $requiredRole) {
-                    throw ValidationException::withMessages([
-                        'submission' => ['You are not allowed to review this step.'],
-                    ]);
+                if ($requiredApproverUsername === '' && $requiredRole !== '') {
+                    $allowedByExternalUsername = $requiredApprovalType === 'external' && $reviewerUsername === $requiredRole;
+                    if (!$allowedByExternalUsername && $role !== $requiredRole) {
+                        throw ValidationException::withMessages([
+                            'submission' => ['You are not allowed to review this step.'],
+                        ]);
+                    }
                 }
+            }
+
+            if ($requiredApprovalType === 'external' && $requiredApproverUsername === '' && $requiredRole !== '') {
+                // Persist fallback username mapping for legacy external steps.
+                $steps[$activeIndex]['approverUsername'] = $requiredRole;
             }
 
             $now = now()->toISOString();
@@ -628,6 +637,12 @@ class FormBuilderPageController extends Controller
                 }
 
                 if ($nextPendingIndex !== null) {
+                    if (
+                        strtolower(trim((string) ($steps[$nextPendingIndex]['approvalType'] ?? 'internal'))) === 'external'
+                        && trim((string) ($steps[$nextPendingIndex]['approverUsername'] ?? '')) === ''
+                    ) {
+                        $steps[$nextPendingIndex]['approverUsername'] = strtolower(trim((string) ($steps[$nextPendingIndex]['role'] ?? '')));
+                    }
                     $steps[$nextPendingIndex]['status'] = 'in_review';
                     $submission->status = 'in_review';
                 } else {
@@ -1060,7 +1075,14 @@ class FormBuilderPageController extends Controller
                 $approverUsername = $approver->username;
                 $approverName = $approver->name;
             } else {
-                $approverName = $role !== '' ? $role : null;
+                $externalIdentifier = strtolower(trim((string) $role));
+                if ($externalIdentifier !== '') {
+                    $externalApprover = $approverUsers->get($externalIdentifier);
+                    $approverUsername = $externalApprover?->username ?? $externalIdentifier;
+                    $approverName = $externalApprover?->name ?? $role;
+                } else {
+                    $approverName = null;
+                }
             }
 
             $steps[] = [
