@@ -1,4 +1,11 @@
-        document.getElementById("btn-open-login").addEventListener("click", () => {
+        const bindNavClick = (id, handler) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (el.tagName === "A" && el.getAttribute("href")) return;
+            el.addEventListener("click", handler);
+        };
+
+        bindNavClick("btn-open-login", () => {
             if (currentUser) {
                 if (currentUser.role === "non_admin") {
                     showView("mySubmissions");
@@ -16,15 +23,15 @@
             }
             showView("login");
         });
-        document.getElementById("btn-back-home").addEventListener("click", () => showView("landing"));
-        document.getElementById("btn-open-fill").addEventListener("click", () => { renderTemplateList(); showView("fillList"); });
-        document.getElementById("btn-open-track").addEventListener("click", () => showView("track"));
-        document.getElementById("btn-fill-list-back").addEventListener("click", () => showView("landing"));
-        document.getElementById("btn-fill-form-back").addEventListener("click", () => showView("fillList"));
-        document.getElementById("btn-track-back").addEventListener("click", () => showView("landing"));
-        document.getElementById("btn-submit-form").addEventListener("click", submitForm);
+        bindNavClick("btn-back-home", () => showView("landing"));
+        bindNavClick("btn-open-fill", () => { renderTemplateList(); showView("fillList"); });
+        bindNavClick("btn-open-track", () => showView("track"));
+        bindNavClick("btn-fill-list-back", () => showView("landing"));
+        bindNavClick("btn-fill-form-back", () => showView("fillList"));
+        bindNavClick("btn-track-back", () => showView("landing"));
+        bindNavClick("btn-submit-form", submitForm);
         if (!document.getElementById("form-track-search")) {
-            document.getElementById("btn-track-search").addEventListener("click", searchTrack);
+            bindNavClick("btn-track-search", searchTrack);
         }
         document.getElementById("btn-admin-logout").addEventListener("click", () => {
             const form = document.createElement("form");
