@@ -45,10 +45,10 @@
                             <button class="btn-editor-tab" data-tab="${id}" style="flex:1;padding:10px 16px;border-radius:8px;border:none;background:${editorTab === id ? "var(--primary)" : "transparent"};color:${editorTab === id ? "var(--white)" : "var(--gray)"};font-weight:600;cursor:pointer;font-size:14px;">${label}</button>
                         `).join("")}
                     </div>
-@include('formbuilder::partials.scripts.pages.admin.editor.tabs.fields')
-@include('formbuilder::partials.scripts.pages.admin.editor.tabs.approval')
-@include('formbuilder::partials.scripts.pages.admin.editor.tabs.settings')
-@include('formbuilder::partials.scripts.pages.admin.editor.tabs.preview')
+@include('formbuilder::formbuilder.partials.scripts.pages.admin.editor.tabs.fields')
+@include('formbuilder::formbuilder.partials.scripts.pages.admin.editor.tabs.approval')
+@include('formbuilder::formbuilder.partials.scripts.pages.admin.editor.tabs.settings')
+@include('formbuilder::formbuilder.partials.scripts.pages.admin.editor.tabs.preview')
                 `;
 
 
