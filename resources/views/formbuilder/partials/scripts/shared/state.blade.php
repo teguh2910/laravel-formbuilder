@@ -1,4 +1,4 @@
-        const apiBase = "/formbuilder/api";
+        const apiBase = "formbuilder/api";
         const csrfToken = "{{ csrf_token() }}";
         const authStorageKey = "formbuilder_auth_user";
 
