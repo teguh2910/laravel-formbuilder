@@ -5,7 +5,7 @@
                 <h2 class="login-title">SATU FORM</h2>
                 <p class="login-sub">Admin Login</p>
             </div>
-            <form id="form-login" method="POST" action="{{ '/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') . '/login' }}" data-mode="server">
+            <form id="form-login" method="POST" action="{{ ($formbuilderRouteBase ?? ('/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/'))) . '/login' }}" data-mode="server">
                 @csrf
                 <div class="mb-18">
                     <label class="label">Username</label>

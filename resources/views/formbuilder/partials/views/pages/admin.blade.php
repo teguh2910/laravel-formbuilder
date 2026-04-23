@@ -1,3 +1,4 @@
+    @php($fbRouteBase = $formbuilderRouteBase ?? ('/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/')))
     <div id="view-admin" class="admin-wrap hidden">
         <aside class="admin-sidebar">
             <div style="padding:18px;border-bottom:1px solid rgba(255,255,255,.12);">
@@ -11,14 +12,14 @@
                 </div>
             </div>
             <nav style="padding:12px;display:flex;flex-direction:column;gap:6px;flex:1;">
-                <a class="admin-nav-btn active" data-admin-page="dashboard" href="{{ '/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') . '/admin?page=dashboard' }}">Dashboard</a>
-                <a class="admin-nav-btn" data-admin-page="submit-form" href="{{ '/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') . '/admin?page=submit-form' }}">Submit Form</a>
-                <a class="admin-nav-btn" data-admin-page="my-submissions" href="{{ '/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') . '/admin?page=my-submissions' }}">My Submission</a>
-                <a class="admin-nav-btn" data-admin-page="forms" href="{{ '/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') . '/admin?page=forms' }}">FORM List</a>
-                <a class="admin-nav-btn" data-admin-page="submissions" href="{{ '/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') . '/admin?page=submissions' }}">Submission</a>
-                <a class="admin-nav-btn" data-admin-page="tracking" href="{{ '/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') . '/admin?page=tracking' }}">Tracking</a>
-                <a class="admin-nav-btn" data-admin-page="departments" href="{{ '/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') . '/admin?page=departments' }}">Departments</a>
-                <a class="admin-nav-btn" data-admin-page="users" href="{{ '/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') . '/admin?page=users' }}">Users</a>
+                <a class="admin-nav-btn active" data-admin-page="dashboard" href="{{ $fbRouteBase . '/admin?page=dashboard' }}">Dashboard</a>
+                <a class="admin-nav-btn" data-admin-page="submit-form" href="{{ $fbRouteBase . '/admin?page=submit-form' }}">Submit Form</a>
+                <a class="admin-nav-btn" data-admin-page="my-submissions" href="{{ $fbRouteBase . '/admin?page=my-submissions' }}">My Submission</a>
+                <a class="admin-nav-btn" data-admin-page="forms" href="{{ $fbRouteBase . '/admin?page=forms' }}">FORM List</a>
+                <a class="admin-nav-btn" data-admin-page="submissions" href="{{ $fbRouteBase . '/admin?page=submissions' }}">Submission</a>
+                <a class="admin-nav-btn" data-admin-page="tracking" href="{{ $fbRouteBase . '/admin?page=tracking' }}">Tracking</a>
+                <a class="admin-nav-btn" data-admin-page="departments" href="{{ $fbRouteBase . '/admin?page=departments' }}">Departments</a>
+                <a class="admin-nav-btn" data-admin-page="users" href="{{ $fbRouteBase . '/admin?page=users' }}">Users</a>
             </nav>
             <div style="padding:12px;">
                 <button id="btn-admin-logout" class="btn btn-ghost" style="width:100%;color:#fff;background:rgba(255,255,255,.08);">Logout</button>
@@ -27,7 +28,7 @@
         <main class="admin-main">
             <div id="admin-content"></div>
         </main>
-        <form id="admin-submit-form" method="POST" action="{{ '/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') . '/forms/submit-auth' }}" class="hidden">
+        <form id="admin-submit-form" method="POST" action="{{ $fbRouteBase . '/forms/submit-auth' }}" class="hidden">
             @csrf
             <input type="hidden" name="redirect_to" value="admin">
             <input type="hidden" id="admin-submit-payload" name="payload" value="">

@@ -27,6 +27,7 @@ class FormBuilderPageController extends Controller
             'formbuilderCurrentUser' => is_array($currentUser) ? $currentUser : null,
             'formbuilderInitialData' => $initialData,
             'formbuilderFlash' => session('formbuilder_flash'),
+            'formbuilderRouteBase' => $this->prefixedPath(''),
         ]);
     }
 
@@ -678,12 +679,26 @@ class FormBuilderPageController extends Controller
     {
         $prefix = trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/');
         $suffix = trim($suffix, '/');
+        $requestPath = trim((string) request()->path(), '/');
 
-        if ($suffix === '') {
-            return '/' . $prefix;
+        $pathPrefix = $prefix;
+        if ($prefix !== '' && $requestPath !== '') {
+            $quotedPrefix = preg_quote($prefix, '#');
+            if (preg_match('#^(.*?)/' . $quotedPrefix . '(?:/.*)?$#', $requestPath, $matches)) {
+                $detectedBase = trim((string) ($matches[1] ?? ''), '/');
+                if ($detectedBase !== '' && !str_starts_with($prefix, $detectedBase . '/')) {
+                    $pathPrefix = $detectedBase . '/' . $prefix;
+                }
+            }
         }
 
-        return '/' . $prefix . '/' . $suffix;
+        if ($suffix !== '') {
+            $pathPrefix = trim($pathPrefix . '/' . $suffix, '/');
+        } else {
+            $pathPrefix = trim($pathPrefix, '/');
+        }
+
+        return '/' . $pathPrefix;
     }
 
     private function loginPath(): string

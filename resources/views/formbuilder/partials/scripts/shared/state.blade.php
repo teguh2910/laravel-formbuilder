@@ -1,4 +1,4 @@
-        const routePrefix = "/{{ trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') }}";
+        const routePrefix = @json($formbuilderRouteBase ?? ('/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/')));
         const initialServerView = @json($formbuilderInitialView ?? null);
         const serverCurrentUser = @json($formbuilderCurrentUser ?? null);
         const serverInitialData = @json($formbuilderInitialData ?? null);
