@@ -49,7 +49,10 @@ return new class extends Migration
                 ->references('id')
                 ->on('FORM.form_departments')
                 ->nullOnDelete();
+        });
 
+        // SQL Server is more reliable with self-referencing FK applied after create.
+        Schema::table('FORM.form_templates', function (Blueprint $table) {
             $table->foreign('prerequisite_form_id')
                 ->references('id')
                 ->on('FORM.form_templates')
