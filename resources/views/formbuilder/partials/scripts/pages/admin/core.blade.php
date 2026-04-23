@@ -1,11 +1,20 @@
         function getAdminData() {
             const isSuperadmin = currentUser && currentUser.role === "superadmin";
+            const currentUsername = String(currentUser?.username || "").toLowerCase();
+            const isAssignedToCurrentUser = (submission) => {
+                const steps = Array.isArray(submission?.approvalSteps) ? submission.approvalSteps : [];
+                return steps.some(step => String(step?.approverUsername || "").toLowerCase() === currentUsername);
+            };
             const allowedTemplates = isSuperadmin
                 ? templates
                 : templates.filter(t => t.department === currentUser.department || !t.department);
             const allowedSubs = isSuperadmin
                 ? submissions
-                : submissions.filter(s => s.department === currentUser.department || !s.department);
+                : submissions.filter(s =>
+                    s.department === currentUser.department
+                    || !s.department
+                    || isAssignedToCurrentUser(s)
+                );
             return { allowedTemplates, allowedSubs };
         }
 
