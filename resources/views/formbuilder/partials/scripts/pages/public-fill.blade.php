@@ -276,26 +276,15 @@
                 submittedAt: new Date().toISOString(),
             };
 
-            try {
-                await apiRequest("/submissions", {
-                    method: "POST",
-                    body: payload,
-                });
-                await loadAppData();
-            } catch (e) {
-                showToast(e.message || "Failed to submit form", "error");
+            const submitFormEl = document.getElementById("public-submit-form");
+            const submitPayloadEl = document.getElementById("public-submit-payload");
+            if (!submitFormEl || !submitPayloadEl) {
+                showToast("Submit form is not available", "error");
                 return;
             }
 
-            document.getElementById("emp-name").value = "";
-            document.getElementById("emp-email").value = "";
-            selectedTemplate = null;
-            formData = {};
-            verifiedPrerequisiteSubmissionId = null;
-            internalApproverSelections = {};
-            renderTemplateList();
-            showView("fillList");
-            showToast(`Form submitted. Tracking ID: ${id}`);
+            submitPayloadEl.value = JSON.stringify(payload);
+            submitFormEl.submit();
         }
 
         document.getElementById("btn-prereq-check").addEventListener("click", async () => {

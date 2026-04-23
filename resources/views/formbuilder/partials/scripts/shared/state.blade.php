@@ -1,6 +1,9 @@
-        const apiBase = "/ais-v4/formbuilder/api";
+        const apiBase = "/formbuilder/api";
         const routePrefix = "/{{ trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') }}";
         const initialServerView = @json($formbuilderInitialView ?? null);
+        const serverCurrentUser = @json($formbuilderCurrentUser ?? null);
+        const serverInitialData = @json($formbuilderInitialData ?? null);
+        const serverFlash = @json($formbuilderFlash ?? null);
         const csrfToken = "{{ csrf_token() }}";
         const authStorageKey = "formbuilder_auth_user";
 
@@ -36,7 +39,7 @@
         const toastEl = document.getElementById("toast");
         let selectedTemplate = null;
         let formData = {};
-        let currentUser = null;
+        let currentUser = serverCurrentUser || null;
         let adminPage = "dashboard";
         let editorDraft = null;
         let editorTab = "fields";

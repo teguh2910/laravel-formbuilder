@@ -29,5 +29,9 @@
                 <div id="dynamic-fields"></div>
                 <button id="btn-submit-form" class="btn btn-primary">Submit Form</button>
             </div>
+            <form id="public-submit-form" method="POST" action="{{ '/' . trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/') . '/forms/submit' }}" class="hidden">
+                @csrf
+                <input type="hidden" id="public-submit-payload" name="payload" value="">
+            </form>
         </div>
     </div>

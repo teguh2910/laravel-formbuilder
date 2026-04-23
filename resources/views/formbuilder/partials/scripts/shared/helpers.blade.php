@@ -135,6 +135,17 @@
             submissions = data.submissions || [];
         }
 
+        function hydrateAppDataFromServer() {
+            if (!serverInitialData || typeof serverInitialData !== "object") return false;
+
+            if (Array.isArray(serverInitialData.users)) users = serverInitialData.users;
+            if (Array.isArray(serverInitialData.depts)) depts = serverInitialData.depts;
+            if (Array.isArray(serverInitialData.templates)) templates = serverInitialData.templates;
+            if (Array.isArray(serverInitialData.submissions)) submissions = serverInitialData.submissions;
+
+            return true;
+        }
+
         function persistCurrentUserSession(user) {
             try {
                 if (!user || !user.username) return;
@@ -155,22 +166,11 @@
         }
 
         function restoreCurrentUserSession() {
-            try {
-                const raw = localStorage.getItem(authStorageKey);
-                if (!raw) return null;
-                const parsed = JSON.parse(raw);
-                if (!parsed || !parsed.username) return null;
-                return {
-                    username: parsed.username,
-                    role: parsed.role || "",
-                    name: parsed.name || parsed.username,
-                    email: parsed.email || "",
-                    department: parsed.department || null,
-                };
-            } catch (_) {
-                clearCurrentUserSession();
-                return null;
+            if (serverCurrentUser && serverCurrentUser.username) {
+                return serverCurrentUser;
             }
+            clearCurrentUserSession();
+            return null;
         }
 
         function safeCalc(expr) {

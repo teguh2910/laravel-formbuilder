@@ -1,4 +1,10 @@
         async function login() {
+            const loginForm = document.getElementById("form-login");
+            if (loginForm && loginForm.dataset.mode === "server") {
+                loginForm.submit();
+                return;
+            }
+
             const username = document.getElementById("login-username").value.trim();
             const password = document.getElementById("login-password").value;
 
@@ -56,9 +62,12 @@
             showView("admin");
         }
 
-        document.getElementById("btn-login").addEventListener("click", () => {
-            login();
-        });
-        document.getElementById("login-password").addEventListener("keydown", (e) => {
-            if (e.key === "Enter") login();
-        });
+        const loginFormMode = document.getElementById("form-login")?.dataset.mode || "";
+        if (loginFormMode !== "server") {
+            document.getElementById("btn-login").addEventListener("click", () => {
+                login();
+            });
+            document.getElementById("login-password").addEventListener("keydown", (e) => {
+                if (e.key === "Enter") login();
+            });
+        }

@@ -23,13 +23,23 @@
         document.getElementById("btn-fill-form-back").addEventListener("click", () => showView("fillList"));
         document.getElementById("btn-track-back").addEventListener("click", () => showView("landing"));
         document.getElementById("btn-submit-form").addEventListener("click", submitForm);
-        document.getElementById("btn-track-search").addEventListener("click", searchTrack);
+        if (!document.getElementById("form-track-search")) {
+            document.getElementById("btn-track-search").addEventListener("click", searchTrack);
+        }
         document.getElementById("btn-admin-logout").addEventListener("click", () => {
-            currentUser = null;
+            const form = document.createElement("form");
+            form.method = "POST";
+            form.action = `${routePrefix}/logout`;
+
+            const tokenInput = document.createElement("input");
+            tokenInput.type = "hidden";
+            tokenInput.name = "_token";
+            tokenInput.value = csrfToken;
+            form.appendChild(tokenInput);
+
+            document.body.appendChild(form);
             clearCurrentUserSession();
-            adminPage = "dashboard";
-            showView("landing");
-            showToast("Logged out");
+            form.submit();
         });
         document.querySelectorAll("[data-admin-page]").forEach(btn => {
             btn.addEventListener("click", () => {
@@ -42,8 +52,10 @@
             try {
                 const initialView = initialServerView || resolveViewFromPath(window.location.pathname);
                 currentUser = restoreCurrentUserSession();
+                const hasServerData = hydrateAppDataFromServer();
+                const hasLocalData = users.length > 0 || depts.length > 0 || templates.length > 0 || submissions.length > 0;
                 const needsData = !["landing", "login"].includes(initialView);
-                if (needsData) {
+                if (needsData && !hasServerData && !hasLocalData) {
                     await loadAppData();
                 }
                 if (templates.length > 0) {
@@ -72,7 +84,7 @@
                 showView(initialView, { syncRoute: false, forceLocal: true });
                 if (initialView === "fillForm") {
                     const params = new URLSearchParams(window.location.search);
-                    const templateId = (params.get("template") || "").trim();
+                    const templateId = (serverInitialData?.selectedTemplateId || params.get("template") || "").trim();
                     if (!templateId) {
                         showView("fillList");
                         return;
@@ -92,12 +104,27 @@
                     renderDynamicFields();
                     document.getElementById("selected-form-title").textContent = selectedTemplate.name;
                 }
+                if (initialView === "track" && serverInitialData && typeof serverInitialData === "object") {
+                    const inputEl = document.getElementById("track-id");
+                    const resultEl = document.getElementById("track-result");
+                    if (inputEl && serverInitialData.trackQuery) {
+                        inputEl.value = serverInitialData.trackQuery;
+                    }
+                    if (resultEl && serverInitialData.trackSubmission) {
+                        resultEl.innerHTML = renderTrackingResultHtml(serverInitialData.trackSubmission, { showEmployee: true });
+                    } else if (resultEl && serverInitialData.trackNotFound) {
+                        resultEl.innerHTML = `<div style="padding:12px;background:#FEE2E2;color:var(--danger);border-radius:8px;">Submission not found.</div>`;
+                    }
+                }
                 if (currentUser && initialView === "admin") {
                     renderAdmin();
                 }
                 if (currentUser && initialView === "mySubmissions" && currentUser.role === "non_admin") {
                     if (typeof showMyView === "function") showMyView("myDashboard");
                     if (typeof renderMySubmissionsDashboard === "function") renderMySubmissionsDashboard();
+                }
+                if (serverFlash && typeof serverFlash === "object" && serverFlash.message) {
+                    showToast(serverFlash.message, serverFlash.type || "success");
                 }
             } catch (e) {
                 showToast(e.message || "Failed to load app data", "error");
