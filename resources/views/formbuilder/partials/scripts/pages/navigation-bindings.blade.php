@@ -42,7 +42,7 @@
             try {
                 const initialView = initialServerView || resolveViewFromPath(window.location.pathname);
                 currentUser = restoreCurrentUserSession();
-                const needsData = currentUser || !["landing", "login"].includes(initialView);
+                const needsData = !["landing", "login"].includes(initialView);
                 if (needsData) {
                     await loadAppData();
                 }
