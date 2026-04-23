@@ -1,4 +1,4 @@
-        const apiBase = "formbuilder/api";
+        const apiBase = "/ais-v4/public/index.php/formbuilder/api";
         const csrfToken = "{{ csrf_token() }}";
         const authStorageKey = "formbuilder_auth_user";
 
