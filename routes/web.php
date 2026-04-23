@@ -5,7 +5,11 @@ use SatuForm\FormBuilder\Http\Controllers\FormBuilderPageController;
 
 Route::middleware('web')->group(function () {
     $prefix = trim((string) config('formbuilder.route_prefix', 'formbuilder'), '/');
+    $basePath = trim((string) config('formbuilder.base_path', ''), '/');
     Route::get('/', [FormBuilderPageController::class, 'landing']);
+    if ($basePath !== '') {
+        Route::get('/'.$basePath, [FormBuilderPageController::class, 'landing']);
+    }
     Route::get('/'.$prefix, [FormBuilderPageController::class, 'landing']);
     Route::get('/'.$prefix.'/login', [FormBuilderPageController::class, 'login']);
     Route::get('/'.$prefix.'/forms', [FormBuilderPageController::class, 'forms']);
@@ -23,5 +27,6 @@ Route::middleware('web')->group(function () {
     Route::post('/'.$prefix.'/admin/users/save', [FormBuilderPageController::class, 'saveUser']);
     Route::post('/'.$prefix.'/admin/users/{id}/delete', [FormBuilderPageController::class, 'deleteUser']);
     Route::post('/'.$prefix.'/admin/submissions/{id}/review', [FormBuilderPageController::class, 'reviewSubmission']);
-    Route::get('/dashboard', [FormBuilderPageController::class, 'landing'])->name('dashboard');
+    $dashboardPath = $basePath !== '' ? '/'.$basePath.'/dashboard' : '/dashboard';
+    Route::get($dashboardPath, [FormBuilderPageController::class, 'landing'])->name('dashboard');
 });
