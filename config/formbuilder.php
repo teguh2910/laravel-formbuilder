@@ -1,6 +1,6 @@
 <?php
 
 return [
-    'route_prefix' => 'formbuilder',
-    'api_prefix' => 'formbuilder/api',
+    'route_prefix' => env('FORMBUILDER_ROUTE_PREFIX', 'formbuilder'),
+    'api_prefix' => env('FORMBUILDER_API_PREFIX', 'formbuilder/api'),
 ];

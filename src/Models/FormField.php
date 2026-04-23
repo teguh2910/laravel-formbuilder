@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class FormField extends Model
 {
     use HasFactory;
-
+    protected $connection = 'ais';
     protected $table = 'FORM.form_fields';
     public $incrementing = false;
     protected $keyType = 'string';

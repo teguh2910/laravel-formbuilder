@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class FormSubmission extends Model
 {
     use HasFactory;
-
+    protected $connection = 'ais';
     protected $table = 'FORM.form_submissions';
     public $incrementing = false;
     protected $keyType = 'string';

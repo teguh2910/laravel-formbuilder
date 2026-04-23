@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class FormUser extends Model
 {
     use HasFactory;
-
+    protected $connection = 'ais';
     protected $table = 'FORM.form_users';
 
     protected $fillable = [

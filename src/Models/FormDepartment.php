@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class FormDepartment extends Model
 {
     use HasFactory;
-
+    protected $connection = 'ais';
     protected $table = 'FORM.form_departments';
     public $incrementing = false;
     protected $keyType = 'string';

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class FormTemplate extends Model
 {
     use HasFactory;
-
+    protected $connection = 'ais';
     protected $table = 'FORM.form_templates';
     public $incrementing = false;
     protected $keyType = 'string';
